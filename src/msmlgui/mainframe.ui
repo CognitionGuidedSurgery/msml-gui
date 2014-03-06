@@ -84,8 +84,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>300</width>
-          <height>153</height>
+          <width>494</width>
+          <height>180</height>
          </rect>
         </property>
         <layout class="QGridLayout" name="gridLayout_5">
@@ -143,7 +143,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>386</width>
+          <width>256</width>
           <height>685</height>
          </rect>
         </property>
@@ -216,6 +216,9 @@
    </attribute>
   </widget>
   <action name="actionOpen">
+   <property name="icon">
+    <iconset theme=":/icons/tango/16x16/document-open.png"/>
+   </property>
    <property name="text">
     <string>Open</string>
    </property>
@@ -243,6 +246,8 @@
    <header>msmlgui.widgets</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="../theme.qrc"/>
+ </resources>
  <connections/>
 </ui>

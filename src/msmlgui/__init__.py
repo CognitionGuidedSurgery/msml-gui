@@ -1,3 +1,6 @@
+from PyQt4.QtGui import QFileDialog
+from matplotlib.backends.qt4_editor.formlayout import QIcon
+
 __author__ = 'weigl'
 
 from PyQt4 import QtGui, uic, QtCore
@@ -11,8 +14,6 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 from msml.titen import titen
-
-
 from .widgets import *
 
 OPERATOR_HELP  = titen("""
@@ -88,14 +89,23 @@ td {{ border: 1;}
 </html>
 """)
 
-
-
 PKG_DIR = path(__file__).dirname()
+
+
+from PyQt4 import QtCore, QtGui, QtWebKit
+
+try:
+    _fromUtf8 = QtCore.QString.fromUtf8
+except AttributeError:
+    _fromUtf8 = lambda s: s
+
+from msmlgui.widgets import MSMLGraphicsView
+import msmlgui.rcc
 
 class MSMLMainFrame(QtGui.QMainWindow):
     def __init__(self):
-        QtGui.QMainWindow.__init__(self)
-        uic.loadUi(PKG_DIR / "mainframe.ui", self)
+        QMainWindow.__init__(self)
+        self.setupUi()
 
         opListModel = OperatorListModel()
 
@@ -116,6 +126,114 @@ class MSMLMainFrame(QtGui.QMainWindow):
 
         self.mappingTask = {}
 
+        self.actionOpen.setIcon(QIcon.fromTheme("document-open"))
+
+    def _setupMenu(self):
+        self.menubar = QtGui.QMenuBar(self)
+        self.menuFile = QtGui.QMenu("File" , self.menubar)
+        self.menuHelp = QtGui.QMenu("Help", self.menubar)
+        self.menubar.addAction(self.menuFile.menuAction())
+        self.menubar.addAction(self.menuHelp.menuAction())
+        self.setMenuBar(self.menubar)
+        self.actionOpen = QtGui.QAction("Open", self)
+        self.actionClose = QtGui.QAction("Close", self)
+        self.menuFile.addAction(self.actionOpen)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionClose)
+
+    def _setupStatusbar(self):
+        self.statusbar = QtGui.QStatusBar(self)
+        self.setStatusBar(self.statusbar)
+
+    def _setupToolBar(self):
+        self.toolBar = QtGui.QToolBar(self)
+        self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
+
+
+    def _setupCentralWidget(self):
+        self.centralwidget = QtGui.QWidget(self)
+        self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
+        self.centralWidgetLayout = QtGui.QGridLayout(self.centralwidget)
+        self.graphicsView = MSMLGraphicsView(self.centralwidget)
+        self.graphicsView.setRenderHints(
+            QtGui.QPainter.Antialiasing | QtGui.QPainter.HighQualityAntialiasing | QtGui.QPainter.TextAntialiasing)
+        self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)
+        self.centralWidgetLayout.addWidget(self.graphicsView, 0, 0, 1, 1)
+        self.setCentralWidget(self.centralwidget)
+
+    def _setupDockOperators(self):
+        self.dockWidget = QtGui.QDockWidget("Operators", self)
+        self.dockWidget.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+        self.dockWidget.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
+        self.dockWidgetContents = QtGui.QWidget()
+        self.gridLayout_2 = QtGui.QGridLayout(self.dockWidgetContents)
+        self.scrollArea = QtGui.QScrollArea(self.dockWidgetContents)
+        self.scrollArea.setWidgetResizable(True)
+        self.scrollAreaWidgetContents = QtGui.QWidget()
+        self.gridLayout_5 = QtGui.QGridLayout(self.scrollAreaWidgetContents)
+        self.gridLayout_5.setMargin(0)
+        self.listOperators = QtGui.QListView(self.scrollAreaWidgetContents)
+        self.listOperators.setDragEnabled(True)
+        self.listOperators.setDragDropMode(QtGui.QAbstractItemView.DragOnly)
+        self.listOperators.setObjectName(_fromUtf8("listOperators"))
+        self.gridLayout_5.addWidget(self.listOperators, 0, 1, 1, 1)
+        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
+        self.gridLayout_2.addWidget(self.scrollArea, 0, 1, 1, 1)
+        self.dockWidget.setWidget(self.dockWidgetContents)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockWidget)
+
+    def _setupDockParameters(self):
+        self.dockWidget_3 = QtGui.QDockWidget("Parameters", self)
+        self.dockWidget_3.setFloating(False)
+        self.dockWidgetContents_3 = QtGui.QWidget()
+        self.gridLayout = QtGui.QGridLayout(self.dockWidgetContents_3)
+        self.scrollArea_2 = QtGui.QScrollArea(self.dockWidgetContents_3)
+        self.scrollArea_2.setWidgetResizable(True)
+        self.scrollAreaWidgetContents_2 = QtGui.QWidget()
+        self.gridLayout_6 = QtGui.QGridLayout(self.scrollAreaWidgetContents_2)
+        self.gridLayout_6.setMargin(0)
+        self.tabProperties = QtGui.QTableView(self.scrollAreaWidgetContents_2)
+        self.gridLayout_6.addWidget(self.tabProperties, 0, 0, 1, 1)
+        self.scrollArea_2.setWidget(self.scrollAreaWidgetContents_2)
+        self.gridLayout.addWidget(self.scrollArea_2, 0, 0, 1, 1)
+        self.dockWidget_3.setWidget(self.dockWidgetContents_3)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockWidget_3)
+
+    def _setupDockHelp(self):
+        self.dockWidget_6 = QtGui.QDockWidget("Help", self)
+        self.dockWidget_6.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+        self.dockWidgetContents_6 = QtGui.QWidget()
+        self.gridLayout_7 = QtGui.QGridLayout(self.dockWidgetContents_6)
+        self.webOperatorHelp = QtWebKit.QWebView(self.dockWidgetContents_6)
+        self.webOperatorHelp.setUrl(QtCore.QUrl(_fromUtf8("about:blank")))
+        self.gridLayout_7.addWidget(self.webOperatorHelp, 0, 0, 1, 1)
+        self.dockWidget_6.setWidget(self.dockWidgetContents_6)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockWidget_6)
+
+    def setupUi(self):
+        self.setObjectName(_fromUtf8("MainWindow"))
+        self.resize(1012, 771)
+        self.setDockNestingEnabled(True)
+        self.setDockOptions(QtGui.QMainWindow.AllowNestedDocks|QtGui.QMainWindow.AllowTabbedDocks|QtGui.QMainWindow.AnimatedDocks)
+
+        self._setupMenu()
+        self._setupStatusbar()
+        self._setupToolBar()
+
+        ## centeral widget
+        self._setupCentralWidget()
+        self._setupDockOperators()
+        self._setupDockParameters()
+        self._setupDockHelp()
+
+        QtCore.QMetaObject.connectSlotsByName(self)
+
+    def open_file(self, filename):
+        pass #TODO
+
+    def search_open_file(self):
+        pass #TODO
+
     def drop_new_operator(self, operator):
         task = msml.model.Task(operator.name, {'id': "<i>not set</i>"})
         task.operator = operator
@@ -131,7 +249,6 @@ class MSMLMainFrame(QtGui.QMainWindow):
     def set_task_active_propertyeditor(self, task):
         model = PropertyOperatorModel(task, self.tabProperties)
         self.tabProperties.setModel(model)
-
 
     def show_in_operator_help(self, operator):
 
@@ -272,6 +389,10 @@ class OperatorListModel(QtCore.QAbstractListModel):
 
 def run():
     import sys
+    import msmlgui.rcc
+
+    QIcon.setThemeName("tango")
+
 
     msml.env.load_user_file()
     msml.env.current_alphabet = msml.frontend.alphabet({'<paths>':[], 'alphabet': 'a', '--xsd-file':False, '-S': True})

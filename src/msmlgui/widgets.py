@@ -1,3 +1,5 @@
+from PyQt4.QtGui import QGraphicsPixmapItem
+
 __author__ = 'weigl'
 
 from PyQt4 import QtCore, QtGui
@@ -18,6 +20,11 @@ class MSMLGraphicsView(QGraphicsView):
         super(QGraphicsView, self).__init__(parent)
         self.setMouseTracking(True)
 
+    def set_zoom(self, value):
+        value /=100.0
+        transform = QTransform(value, 0, 0, 0, value, 0, 0, 0, 1)
+        self.setTransform(transform)
+
 class MSMLGraphicsScene(QGraphicsScene):
     def __init__(self, parent = None):
         super(QGraphicsScene, self).__init__(parent)
@@ -27,6 +34,27 @@ class MSMLGraphicsScene(QGraphicsScene):
         self.line_mode = False
         self.line_shape = None
         self.from_task = None
+        self.view = parent
+
+
+        self.overview_map = QGraphicsPixmapItem()
+        self.overview_map.setFlag(QGraphicsItem.ItemIgnoresTransformations)
+        self.addItem(self.overview_map)
+
+        self.zoom_widget = QSlider(Qt.Horizontal, parent)
+        self.zoom_widget.setTickInterval(10)
+        self.zoom_widget.setTickPosition(QSlider.TicksBelow)
+        self.zoom_widget.setMaximum(400)
+        self.zoom_widget.setValue(100)
+        self.zoom_widget.setMinimum(50)
+        self.zoom_widget.setPageStep(10)
+        self.zoom_widget.setGeometry(300,0, 300, 30)
+        self.zoom_widget_item = self.addWidget(self.zoom_widget)
+
+        self.zoom_widget.valueChanged.connect(self.view.set_zoom)
+        self.zoom_widget.valueChanged.connect(lambda v: self.update_overview_map())
+
+
 
     def get_task_shape(self, point):
         item = self.itemAt(point)
@@ -37,10 +65,29 @@ class MSMLGraphicsScene(QGraphicsScene):
                 item = item.parentItem()
         return None
 
+    def update_overview_map(self):
+        self.removeItem(self.overview_map)
+        view = QGraphicsView(self)
+
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        pixMap = QPixmap.grabWidget(view)
+
+        pixMap = pixMap.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+        self.overview_map.setPixmap(pixMap)
+        self.addItem(self.overview_map)
+        self.overview_map.setPos(self.view.mapToScene(10,10))
+        self.update_zoom_widget()
+
+    def update_zoom_widget(self):
+        self.zoom_widget_item.setPos(self.view.mapToScene(260,10))
+
 
     def mousePressEvent(self, event):
         assert isinstance(event, QGraphicsSceneMouseEvent)
-
+        self.update_overview_map()
         if event.modifiers() & Qt.CTRL:
             point = event.scenePos()
             item = self.get_task_shape(point)
@@ -127,6 +174,8 @@ class TaskShape(QGraphicsItemGroup):
         self.mainframe = mainframe
         self.task = task
 
+        self.setAcceptDrops(True)
+        self.setCursor(Qt.OpenHandCursor)
 
         self.outer_rect = QGraphicsRectItem(-100, -50, 200, 100, self)
         self.addToGroup(self.outer_rect)
@@ -166,10 +215,19 @@ class TaskShape(QGraphicsItemGroup):
 
 
 
-
         self.setFlag(QGraphicsItem.ItemIsMovable)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsFocusable)
+
+    def dragEnterEvent(self, event):
+        assert isinstance(event, QGraphicsSceneDragDropEvent)
+
+    def dragLeaveEvent(self, event):
+        assert isinstance(event, QGraphicsSceneDragDropEvent)
+
+    def dropEvent(self, event):
+            assert isinstance(event, QGraphicsSceneDragDropEvent)
+
 
 
     # def paint(self, painter, option, widget = None):
