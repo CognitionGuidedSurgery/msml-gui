@@ -15,15 +15,59 @@ TPL_BOX = titen('''<html><body>
             {$op}
         </center></body></html>''')
 
+def drange(start, stop, step):
+    r = start
+    while r < stop:
+        yield r
+        r += step
+
 class MSMLGraphicsView(QGraphicsView):
     def __init__(self, parent = None):
         super(QGraphicsView, self).__init__(parent)
         self.setMouseTracking(True)
 
+        self.zoom_widget = QSlider(Qt.Horizontal, parent)
+        self.zoom_widget.setTickInterval(10)
+        self.zoom_widget.setTickPosition(QSlider.TicksBelow)
+        self.zoom_widget.setMaximum(400)
+        self.zoom_widget.setValue(100)
+        self.zoom_widget.setMinimum(50)
+        self.zoom_widget.setPageStep(10)
+        self.zoom_widget.setGeometry(300,0, 300, 30)
+
+        self.zoom_widget.valueChanged.connect(self.set_zoom)
+        #self.zoom_widget.valueChanged.connect(lambda v: self.update_overview_map())
+
+        self.view = QGraphicsView()
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        self.overview_label = QLabel(self)
+        self.overview_label.setGeometry(-10, -10, 250, 250)
+
+        self.last_time = time.time()
+
+
     def set_zoom(self, value):
         value /=100.0
         transform = QTransform(value, 0, 0, 0, value, 0, 0, 0, 1)
         self.setTransform(transform)
+
+
+    def drawForeground(self, painter, rect):
+        run = time.time()
+        if run - self.last_time  > 1:
+            self.view.setGeometry(self.geometry())
+            self.view.setScene(self.scene())
+            pixMap = QPixmap.grabWidget(self.view)
+            pixMap = pixMap.scaled(250, 250, Qt.KeepAspectRatio)#, Qt.SmoothTransformation)
+            self.overview_label.setPixmap(pixMap)
+
+            self.last_time = run
+
+        QGraphicsView.drawForeground(self, painter, rect)
+
+import time
 
 class MSMLGraphicsScene(QGraphicsScene):
     def __init__(self, parent = None):
@@ -36,24 +80,32 @@ class MSMLGraphicsScene(QGraphicsScene):
         self.from_task = None
         self.view = parent
 
+        self.mCellSize = QRectF(0,0,25,25)
 
-        self.overview_map = QGraphicsPixmapItem()
-        self.overview_map.setFlag(QGraphicsItem.ItemIgnoresTransformations)
-        self.addItem(self.overview_map)
+        self._grid_pen = QPen()
+        self._grid_pen.setStyle(Qt.DotLine)
+        self._grid_pen.setBrush(Qt.lightGray)
+        self._grid_pen.setWidth(0.5)
 
-        self.zoom_widget = QSlider(Qt.Horizontal, parent)
-        self.zoom_widget.setTickInterval(10)
-        self.zoom_widget.setTickPosition(QSlider.TicksBelow)
-        self.zoom_widget.setMaximum(400)
-        self.zoom_widget.setValue(100)
-        self.zoom_widget.setMinimum(50)
-        self.zoom_widget.setPageStep(10)
-        self.zoom_widget.setGeometry(300,0, 300, 30)
-        self.zoom_widget_item = self.addWidget(self.zoom_widget)
 
-        self.zoom_widget.valueChanged.connect(self.view.set_zoom)
-        self.zoom_widget.valueChanged.connect(lambda v: self.update_overview_map())
+    def drawBackground(self, painter, rect):
+        QGraphicsScene.drawBackground(self, painter, rect)
 
+        left = int(rect.left()) - (int(rect.left()) % self.mCellSize.width())
+        top = int(rect.top()) - (int(rect.top()) % self.mCellSize.height())
+
+        lines = list()
+
+        for x in drange(left, rect.right(), self.mCellSize.width()):
+            lines.append(QLineF(x, rect.top(), x, rect.bottom()))
+
+        for y in drange(top, rect.bottom(), self.mCellSize.height()):
+            lines.append(QLineF(rect.left(), y, rect.right(), y))
+
+        painter.save()
+        painter.setPen(self._grid_pen)
+        painter.drawLines(lines)
+        painter.restore()
 
 
     def get_task_shape(self, point):
@@ -65,29 +117,9 @@ class MSMLGraphicsScene(QGraphicsScene):
                 item = item.parentItem()
         return None
 
-    def update_overview_map(self):
-        self.removeItem(self.overview_map)
-        view = QGraphicsView(self)
-
-        view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        pixMap = QPixmap.grabWidget(view)
-
-        pixMap = pixMap.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-
-        self.overview_map.setPixmap(pixMap)
-        self.addItem(self.overview_map)
-        self.overview_map.setPos(self.view.mapToScene(10,10))
-        self.update_zoom_widget()
-
-    def update_zoom_widget(self):
-        self.zoom_widget_item.setPos(self.view.mapToScene(260,10))
-
-
     def mousePressEvent(self, event):
         assert isinstance(event, QGraphicsSceneMouseEvent)
-        self.update_overview_map()
+
         if event.modifiers() & Qt.CTRL:
             point = event.scenePos()
             item = self.get_task_shape(point)
@@ -247,8 +279,6 @@ class TaskShape(QGraphicsItemGroup):
     #     r = QRectF(self.rect)
     #     r.setY(r.y() + 15)
     #     painter.drawText(r,  Qt.AlignHCenter | Qt.AlignTop, self.task.operator.name)
-
-
 
 class GraphicsArrowItem(QGraphicsLineItem):
     def __init__(self, *args):

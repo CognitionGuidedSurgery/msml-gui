@@ -129,17 +129,39 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionOpen.setIcon(QIcon.fromTheme("document-open"))
 
     def _setupMenu(self):
-        self.menubar = QtGui.QMenuBar(self)
-        self.menuFile = QtGui.QMenu("File" , self.menubar)
-        self.menuHelp = QtGui.QMenu("Help", self.menubar)
-        self.menubar.addAction(self.menuFile.menuAction())
-        self.menubar.addAction(self.menuHelp.menuAction())
-        self.setMenuBar(self.menubar)
         self.actionOpen = QtGui.QAction("Open", self)
         self.actionClose = QtGui.QAction("Close", self)
+
+        self.actionShowDockParameters = QAction("Paramters", self)
+        self.actionShowDockHelp = QAction("Help", self)
+        self.actionShowDockVariables = QAction("Variables", self)
+        self.actionShowDockOperators = QAction("Operators", self)
+
+        self.actionShowDockParameters.setCheckable(True)
+        self.actionShowDockOperators.setCheckable(True)
+        self.actionShowDockHelp.setCheckable(True)
+        self.actionShowDockVariables.setCheckable(True)
+
+
+        self.menubar = QtGui.QMenuBar(self)
+
+        ## file
+        self.menuFile = self.menubar.addMenu("File")
         self.menuFile.addAction(self.actionOpen)
         self.menuFile.addSeparator()
         self.menuFile.addAction(self.actionClose)
+
+        ##Views
+        self.menuViews = self.menubar.addMenu("Views")
+        self.menuViews.addAction(self.actionShowDockVariables)
+        self.menuViews.addAction(self.actionShowDockOperators)
+        self.menuViews.addAction(self.actionShowDockHelp)
+        self.menuViews.addAction(self.actionShowDockParameters)
+
+        ## help
+        self.menuHelp = self.menubar.addMenu("Help")
+
+        self.setMenuBar(self.menubar)
 
     def _setupStatusbar(self):
         self.statusbar = QtGui.QStatusBar(self)
