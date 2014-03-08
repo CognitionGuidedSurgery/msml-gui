@@ -383,7 +383,7 @@ class PropertyOperatorModel(QAbstractTableModel):
                     return self.task.attributes[k]
                 except:
                     pass
-        print role
+#        print role
         return QVariant()
 
     def flags(self, index):
