@@ -1,3 +1,4 @@
+# -*- encoding: utf-8 -*-
 from PyQt4.QtGui import QFileDialog
 from matplotlib.backends.qt4_editor.formlayout import QIcon
 
@@ -102,6 +103,8 @@ except AttributeError:
 from msmlgui.widgets import MSMLGraphicsView
 import msmlgui.rcc
 
+from .dialogs import *
+
 class MSMLMainFrame(QtGui.QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
@@ -128,6 +131,9 @@ class MSMLMainFrame(QtGui.QMainWindow):
 
         self.actionOpen.setIcon(QIcon.fromTheme("document-open"))
 
+        self.env_dialog = EnvEditor(self)
+        self.scene_dialog = SceneEditor(self)
+
     def _setupMenu(self):
         self.actionOpen = QtGui.QAction("Open", self)
         self.actionClose = QtGui.QAction("Close", self)
@@ -141,6 +147,16 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionShowDockOperators.setCheckable(True)
         self.actionShowDockHelp.setCheckable(True)
         self.actionShowDockVariables.setCheckable(True)
+
+        self.actionShowEnvEditor = QAction("Edit Environment ...", self)
+        self.actionShowSceneEditor = QAction("Edit Scene ...", self)
+
+        self.actionShowEnvEditor.setShortcut(QKeySequence("Alt-e"))
+        self.actionShowSceneEditor.setShortcut(QKeySequence("Alt-s"))
+
+
+        self.actionShowEnvEditor.triggered.connect(self.show_env_dialog)
+        self.actionShowSceneEditor.triggered.connect(self.show_scene_dialog)
 
 
         self.menubar = QtGui.QMenuBar(self)
@@ -157,6 +173,10 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.menuViews.addAction(self.actionShowDockOperators)
         self.menuViews.addAction(self.actionShowDockHelp)
         self.menuViews.addAction(self.actionShowDockParameters)
+        self.menuViews.addSeparator()
+
+        self.menuViews.addAction(self.actionShowEnvEditor)
+        self.menuViews.addAction(self.actionShowSceneEditor)
 
         ## help
         self.menuHelp = self.menubar.addMenu("Help")
@@ -170,7 +190,6 @@ class MSMLMainFrame(QtGui.QMainWindow):
     def _setupToolBar(self):
         self.toolBar = QtGui.QToolBar(self)
         self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
-
 
     def _setupCentralWidget(self):
         self.centralwidget = QtGui.QWidget(self)
@@ -257,7 +276,9 @@ class MSMLMainFrame(QtGui.QMainWindow):
         pass #TODO
 
     def drop_new_operator(self, operator):
-        task = msml.model.Task(operator.name, {'id': "<i>not set</i>"})
+        name = generate_name()
+
+        task = msml.model.Task(name, {'id': name})
         task.operator = operator
         self.msmlobj.workflow.add_task(task)
 
@@ -282,10 +303,24 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.webOperatorHelp.setHtml(html)
         pass
 
+    def show_env_dialog(self, *args):
+        self.env_dialog.open()
+
+    def show_scene_dialog(self, *args):
+        self.scene_dialog.model = self.msmlobj
+        self.scene_dialog.open()
+
+def generate_name(prefix = "task", suffix = ""):
+    import random
+    chars = [chr(i) for i in range(65, 110)]
+    rand =''.join(random.sample(chars, 5))
+    return prefix + rand + suffix
+
+
+
 class ViewDelegate(QtGui.QItemDelegate):
     def __init__(self):
         QtGui.QItemDelegate.__init__(self)
-
 
     def sizeHint(self, QStyleOptionViewItem, QModelIndex):
         return QtCore.QSize(15,20)

@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1045</width>
+    <width>1040</width>
     <height>1500</height>
    </rect>
   </property>
@@ -17,7 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab">
       <attribute name="title">
@@ -25,12 +25,11 @@
       </attribute>
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
-        <widget class="QsciScintilla" name="textEdit">
-         <property name="toolTip">
-          <string/>
-         </property>
-         <property name="whatsThis">
-          <string/>
+        <widget class="QWebView" name="webView">
+         <property name="url">
+          <url>
+           <string>about:blank</string>
+          </url>
          </property>
         </widget>
        </item>
@@ -56,7 +55,7 @@
           <enum>QLayout::SetFixedSize</enum>
          </property>
          <item>
-          <widget class="QListView" name="listView">
+          <widget class="QListView" name="listScene">
            <property name="enabled">
             <bool>true</bool>
            </property>
@@ -87,12 +86,12 @@
             </spacer>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButton_2">
+            <widget class="QPushButton" name="btnSceneObjectRemove">
              <property name="text">
               <string/>
              </property>
              <property name="icon">
-              <iconset resource="src/theme.qrc">
+              <iconset resource="../theme.qrc">
                <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
              </property>
              <property name="flat">
@@ -101,12 +100,12 @@
             </widget>
            </item>
            <item>
-            <widget class="QPushButton" name="pushButton">
+            <widget class="QPushButton" name="btnSceneObjectAdd">
              <property name="text">
               <string/>
              </property>
              <property name="icon">
-              <iconset resource="src/theme.qrc">
+              <iconset resource="../theme.qrc">
                <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
              </property>
              <property name="checkable">
@@ -156,50 +155,36 @@
              <property name="title">
               <string>General</string>
              </property>
-             <layout class="QGridLayout" name="gridLayout_2">
-              <item row="0" column="0">
-               <layout class="QHBoxLayout" name="horizontalLayout_2">
-                <item>
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="0">
                  <widget class="QLabel" name="lblName">
                   <property name="text">
                    <string>Name:</string>
                   </property>
                  </widget>
                 </item>
-                <item>
+                <item row="0" column="1">
                  <widget class="QLineEdit" name="editName"/>
                 </item>
-               </layout>
-              </item>
-              <item row="1" column="0">
-               <layout class="QHBoxLayout" name="horizontalLayout_3">
-                <item>
+                <item row="1" column="0">
                  <widget class="QLabel" name="lblMesh">
                   <property name="text">
                    <string>Mesh:</string>
                   </property>
                  </widget>
                 </item>
-                <item>
-                 <widget class="QLineEdit" name="lineEdit_5"/>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="pushButton_3">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="src/theme.qrc">
-                    <normaloff>:/icons/tango/16x16/system-search.png</normaloff>:/icons/tango/16x16/system-search.png</iconset>
+                <item row="1" column="1">
+                 <widget class="QComboBox" name="cboMesh">
+                  <property name="editable">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
                </layout>
               </item>
              </layout>
-             <zorder></zorder>
-             <zorder></zorder>
-             <zorder></zorder>
              <zorder></zorder>
             </widget>
            </item>
@@ -208,9 +193,9 @@
              <property name="title">
               <string>Material</string>
              </property>
-             <layout class="QVBoxLayout" name="verticalLayout_7">
-              <item>
-               <layout class="QGridLayout" name="gridLayout">
+             <layout class="QGridLayout" name="gridLayout_3">
+              <item row="0" column="0">
+               <layout class="QGridLayout" name="gridLayout" columnstretch="0,5,0,0">
                 <item row="0" column="0">
                  <widget class="QLabel" name="lblMaterial">
                   <property name="text">
@@ -219,26 +204,53 @@
                  </widget>
                 </item>
                 <item row="0" column="1">
-                 <widget class="QComboBox" name="comboBox"/>
+                 <widget class="QComboBox" name="cboMaterialRegion">
+                  <property name="editable">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QPushButton" name="pushButton_11">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="3">
+                 <widget class="QPushButton" name="pushButton_12">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
+                  </property>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
                 </item>
                 <item row="1" column="0">
                  <widget class="QLabel" name="lblIndexGroup_2">
                   <property name="text">
                    <string>IndexGroup:</string>
-                  </property>
-                 </widget>
-                </item>
-                <item row="1" column="1">
-                 <widget class="QLineEdit" name="lineEdit_6"/>
-                </item>
-                <item row="1" column="2">
-                 <widget class="QPushButton" name="pushButton_5">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="src/theme.qrc">
-                    <normaloff>:/icons/tango/16x16/system-search.png</normaloff>:/icons/tango/16x16/system-search.png</iconset>
                   </property>
                  </widget>
                 </item>
@@ -250,7 +262,7 @@
                  </widget>
                 </item>
                 <item row="2" column="1">
-                 <widget class="QComboBox" name="cboElements">
+                 <widget class="QComboBox" name="cboMaterialRegionElements">
                   <property name="duplicatesEnabled">
                    <bool>false</bool>
                   </property>
@@ -259,7 +271,10 @@
                   </property>
                  </widget>
                 </item>
-                <item row="3" column="1">
+                <item row="1" column="1">
+                 <widget class="QComboBox" name="cboMaterialRegionIndexGroup"/>
+                </item>
+                <item row="2" column="2" colspan="2">
                  <widget class="QCheckBox" name="checkMaterialRegionElementActive">
                   <property name="text">
                    <string>Activate</string>
@@ -268,8 +283,8 @@
                 </item>
                </layout>
               </item>
-              <item>
-               <widget class="QTableView" name="tableView_4"/>
+              <item row="1" column="0">
+               <widget class="QTableView" name="tabMaterialRegionElementAttributes"/>
               </item>
              </layout>
             </widget>
@@ -281,7 +296,7 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_6">
               <item>
-               <widget class="QTableView" name="tableView_6"/>
+               <widget class="QTableView" name="tabConstraints"/>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_8">
@@ -304,7 +319,7 @@
                    <string/>
                   </property>
                   <property name="icon">
-                   <iconset resource="src/theme.qrc">
+                   <iconset resource="../theme.qrc">
                     <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
                   </property>
                   <property name="flat">
@@ -318,7 +333,7 @@
                    <string/>
                   </property>
                   <property name="icon">
-                   <iconset resource="src/theme.qrc">
+                   <iconset resource="../theme.qrc">
                     <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
                   </property>
                   <property name="checkable">
@@ -349,7 +364,7 @@
               <item>
                <widget class="QTabWidget" name="tabSets">
                 <property name="currentIndex">
-                 <number>0</number>
+                 <number>2</number>
                 </property>
                 <widget class="QWidget" name="tab_2">
                  <attribute name="title">
@@ -357,7 +372,7 @@
                  </attribute>
                  <layout class="QVBoxLayout" name="verticalLayout_4">
                   <item>
-                   <widget class="QTableView" name="tableView_2"/>
+                   <widget class="QTableView" name="tabSetsNodes"/>
                   </item>
                  </layout>
                 </widget>
@@ -367,7 +382,7 @@
                  </attribute>
                  <layout class="QHBoxLayout" name="horizontalLayout_5">
                   <item>
-                   <widget class="QTableView" name="tableView_3"/>
+                   <widget class="QTableView" name="tabSetsSurface"/>
                   </item>
                  </layout>
                 </widget>
@@ -377,7 +392,7 @@
                  </attribute>
                  <layout class="QHBoxLayout" name="horizontalLayout_6">
                   <item>
-                   <widget class="QTableView" name="tableView"/>
+                   <widget class="QTableView" name="tabSetsElements"/>
                   </item>
                  </layout>
                 </widget>
@@ -404,7 +419,7 @@
                    <string/>
                   </property>
                   <property name="icon">
-                   <iconset resource="src/theme.qrc">
+                   <iconset resource="../theme.qrc">
                     <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
                   </property>
                   <property name="flat">
@@ -418,7 +433,7 @@
                    <string/>
                   </property>
                   <property name="icon">
-                   <iconset resource="src/theme.qrc">
+                   <iconset resource="../theme.qrc">
                     <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
                   </property>
                   <property name="checkable">
@@ -447,7 +462,7 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_3">
               <item>
-               <widget class="QTableView" name="tableOutput"/>
+               <widget class="QTableView" name="tabOutputs"/>
               </item>
               <item>
                <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -470,7 +485,7 @@
                    <string/>
                   </property>
                   <property name="icon">
-                   <iconset resource="src/theme.qrc">
+                   <iconset resource="../theme.qrc">
                     <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
                   </property>
                   <property name="flat">
@@ -484,7 +499,7 @@
                    <string/>
                   </property>
                   <property name="icon">
-                   <iconset resource="src/theme.qrc">
+                   <iconset resource="../theme.qrc">
                     <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
                   </property>
                   <property name="checkable">
@@ -528,13 +543,13 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QsciScintilla</class>
-   <extends>QFrame</extends>
-   <header>Qsci/qsciscintilla.h</header>
+   <class>QWebView</class>
+   <extends>QWidget</extends>
+   <header>QtWebKit/QWebView</header>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="src/theme.qrc"/>
+  <include location="../theme.qrc"/>
  </resources>
  <connections>
   <connection>
