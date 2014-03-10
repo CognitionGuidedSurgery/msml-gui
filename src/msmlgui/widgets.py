@@ -1,12 +1,10 @@
-from PyQt4.QtGui import QGraphicsPixmapItem
-
 __author__ = 'weigl'
 
 from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from msml.titen import titen 
+from msml.titen import titen
 
 TPL_BOX = titen('''<html><body>
         <center>
