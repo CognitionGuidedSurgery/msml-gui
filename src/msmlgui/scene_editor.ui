@@ -166,7 +166,7 @@
                  </widget>
                 </item>
                 <item row="0" column="1">
-                 <widget class="QLineEdit" name="editName"/>
+                 <widget class="QLineEdit" name="txtName"/>
                 </item>
                 <item row="1" column="0">
                  <widget class="QLabel" name="lblMesh">
@@ -210,22 +210,8 @@
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="2">
-                 <widget class="QPushButton" name="pushButton_11">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../theme.qrc">
-                    <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
-                  </property>
-                  <property name="flat">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
                 <item row="0" column="3">
-                 <widget class="QPushButton" name="pushButton_12">
+                 <widget class="QPushButton" name="btnMaterialRegionAdd">
                   <property name="text">
                    <string/>
                   </property>
@@ -249,6 +235,9 @@
                 </item>
                 <item row="1" column="0">
                  <widget class="QLabel" name="lblIndexGroup_2">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
                   <property name="text">
                    <string>IndexGroup:</string>
                   </property>
@@ -256,6 +245,9 @@
                 </item>
                 <item row="2" column="0">
                  <widget class="QLabel" name="lblElement">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
                   <property name="text">
                    <string>Element</string>
                   </property>
@@ -263,6 +255,9 @@
                 </item>
                 <item row="2" column="1">
                  <widget class="QComboBox" name="cboMaterialRegionElements">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
                   <property name="duplicatesEnabled">
                    <bool>false</bool>
                   </property>
@@ -272,19 +267,90 @@
                  </widget>
                 </item>
                 <item row="1" column="1">
-                 <widget class="QComboBox" name="cboMaterialRegionIndexGroup"/>
+                 <widget class="QComboBox" name="cboMaterialRegionIndexGroup">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                 </widget>
                 </item>
-                <item row="2" column="2" colspan="2">
-                 <widget class="QCheckBox" name="checkMaterialRegionElementActive">
+                <item row="0" column="2">
+                 <widget class="QPushButton" name="btnMaterialRegionRemove">
                   <property name="text">
-                   <string>Activate</string>
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="3">
+                 <widget class="QPushButton" name="btnMaterialRegionElementAdd">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
+                  </property>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QPushButton" name="btnMaterialRegionElementRemove">
+                  <property name="enabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
                   </property>
                  </widget>
                 </item>
                </layout>
               </item>
               <item row="1" column="0">
-               <widget class="QTableView" name="tabMaterialRegionElementAttributes"/>
+               <widget class="QTreeWidget" name="tabMaterialRegionElementAttributes">
+                <property name="editTriggers">
+                 <set>QAbstractItemView::CurrentChanged|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+                </property>
+                <property name="rootIsDecorated">
+                 <bool>true</bool>
+                </property>
+                <property name="animated">
+                 <bool>true</bool>
+                </property>
+                <column>
+                 <property name="text">
+                  <string>Attribute</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Value</string>
+                 </property>
+                </column>
+               </widget>
               </item>
              </layout>
             </widget>
