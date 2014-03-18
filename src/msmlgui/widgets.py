@@ -42,7 +42,7 @@ class MSMLGraphicsView(QGraphicsView):
 
         self.overview_label = QLabel(self)
         self.overview_label.setGeometry(-10, -10, 250, 250)
-
+        self.overview_label.setScaledContents(True)
         self.last_time = time.time()
 
 
