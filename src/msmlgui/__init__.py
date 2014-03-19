@@ -1,6 +1,5 @@
 # -*- encoding: utf-8 -*-
 from PyQt4.QtGui import QFileDialog
-from matplotlib.backends.qt4_editor.formlayout import QIcon
 
 __author__ = 'weigl'
 

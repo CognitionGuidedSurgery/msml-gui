@@ -196,7 +196,7 @@
            <string/>
           </property>
           <property name="icon">
-           <iconset resource="src/theme.qrc">
+           <iconset>
             <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
           </property>
           <property name="flat">
@@ -210,7 +210,7 @@
            <string/>
           </property>
           <property name="icon">
-           <iconset resource="src/theme.qrc">
+           <iconset>
             <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
           </property>
           <property name="flat">
