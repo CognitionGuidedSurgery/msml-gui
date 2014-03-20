@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1040</width>
+    <width>986</width>
     <height>1500</height>
    </rect>
   </property>
@@ -39,7 +39,7 @@
       <attribute name="title">
        <string>Objects</string>
       </attribute>
-      <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,3">
+      <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,4">
        <property name="spacing">
         <number>9</number>
        </property>
@@ -205,7 +205,7 @@
                 </item>
                 <item row="0" column="1">
                  <widget class="QComboBox" name="cboMaterialRegion">
-                  <property name="editable">
+                  <property name="duplicatesEnabled">
                    <bool>true</bool>
                   </property>
                  </widget>
@@ -362,25 +362,49 @@
              </property>
              <layout class="QVBoxLayout" name="verticalLayout_6">
               <item>
-               <widget class="QTableView" name="tabConstraints"/>
+               <widget class="QTreeWidget" name="tabConstraints">
+                <attribute name="headerHighlightSections">
+                 <bool>true</bool>
+                </attribute>
+                <column>
+                 <property name="text">
+                  <string>Attribute</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Value</string>
+                 </property>
+                </column>
+               </widget>
               </item>
               <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_8">
+               <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="0,5,0,0">
                 <item>
-                 <spacer name="horizontalSpacer_4">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
+                 <widget class="QLabel" name="lblConstraints">
+                  <property name="enabled">
+                   <bool>true</bool>
                   </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
+                  <property name="text">
+                   <string>Constraints</string>
                   </property>
-                 </spacer>
+                 </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pushButton_9">
+                 <widget class="QComboBox" name="cboConstraints">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="duplicatesEnabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="frame">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnConstraintRemove">
                   <property name="text">
                    <string/>
                   </property>
@@ -394,7 +418,98 @@
                  </widget>
                 </item>
                 <item>
-                 <widget class="QPushButton" name="pushButton_10">
+                 <widget class="QPushButton" name="btnConstraintAdd">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
+                  </property>
+                  <property name="checkable">
+                   <bool>false</bool>
+                  </property>
+                  <property name="checked">
+                   <bool>false</bool>
+                  </property>
+                  <property name="default">
+                   <bool>false</bool>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+             </layout>
+             <zorder>tabConstraints</zorder>
+             <zorder>cboConstraints</zorder>
+             <zorder>lblConstraints</zorder>
+             <zorder></zorder>
+            </widget>
+           </item>
+           <item>
+            <widget class="QGroupBox" name="groupBox_4">
+             <property name="title">
+              <string>Output</string>
+             </property>
+             <layout class="QVBoxLayout" name="verticalLayout_3">
+              <item>
+               <widget class="QTreeWidget" name="tabOutputs">
+                <column>
+                 <property name="text">
+                  <string>Attribute</string>
+                 </property>
+                </column>
+                <column>
+                 <property name="text">
+                  <string>Value</string>
+                 </property>
+                </column>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,5,0,0">
+                <item>
+                 <widget class="QLabel" name="Outputs">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="text">
+                   <string>Constraints</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QComboBox" name="cboOutputs">
+                  <property name="enabled">
+                   <bool>true</bool>
+                  </property>
+                  <property name="duplicatesEnabled">
+                   <bool>false</bool>
+                  </property>
+                  <property name="frame">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnOutputRemove">
+                  <property name="text">
+                   <string/>
+                  </property>
+                  <property name="icon">
+                   <iconset resource="../theme.qrc">
+                    <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
+                  </property>
+                  <property name="flat">
+                   <bool>true</bool>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="btnOutputAdd">
                   <property name="text">
                    <string/>
                   </property>
@@ -495,72 +610,6 @@
                 </item>
                 <item>
                  <widget class="QPushButton" name="pushButton_8">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../theme.qrc">
-                    <normaloff>:/icons/tango/16x16/list-add.png</normaloff>:/icons/tango/16x16/list-add.png</iconset>
-                  </property>
-                  <property name="checkable">
-                   <bool>false</bool>
-                  </property>
-                  <property name="checked">
-                   <bool>false</bool>
-                  </property>
-                  <property name="default">
-                   <bool>false</bool>
-                  </property>
-                  <property name="flat">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox_4">
-             <property name="title">
-              <string>Output</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_3">
-              <item>
-               <widget class="QTableView" name="tabOutputs"/>
-              </item>
-              <item>
-               <layout class="QHBoxLayout" name="horizontalLayout_4">
-                <item>
-                 <spacer name="horizontalSpacer_2">
-                  <property name="orientation">
-                   <enum>Qt::Horizontal</enum>
-                  </property>
-                  <property name="sizeHint" stdset="0">
-                   <size>
-                    <width>40</width>
-                    <height>20</height>
-                   </size>
-                  </property>
-                 </spacer>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="pushButton_4">
-                  <property name="text">
-                   <string/>
-                  </property>
-                  <property name="icon">
-                   <iconset resource="../theme.qrc">
-                    <normaloff>:/icons/tango/16x16/list-remove.png</normaloff>:/icons/tango/16x16/list-remove.png</iconset>
-                  </property>
-                  <property name="flat">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QPushButton" name="pushButton_6">
                   <property name="text">
                    <string/>
                   </property>
