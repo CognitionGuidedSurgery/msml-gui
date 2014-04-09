@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+</head>
+<body>
+<strong>Scene</strong>
+<hr />
+{% if scene: %}
+    {% for o in scene %}
+       <strong>{{o.id}}</strong> <br />
+        {% for r in scene.material %}
+            {% for mat in r %}
+            <dl>
+                <dt></dt>
+                <dd></dd>
+            </dl>
+            {%endfor%}
+        {%endfor%}
+
+    {% endfor %}
+{%else%}
+    <em>no scene objects</em>
+{%endif%}
+</body>
+</html>

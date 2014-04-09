@@ -14,6 +14,6 @@ setup(name="msml-gui",
       license="GNU General Public License (GPL) 3",
       packages=['msmlgui'],
       package_data={"src": ["*.ui"]},
-      scripts=["src/run.py"],
+      scripts=["src/__main__.py"],
       windows=[{"script": "bin/liftr"}],
       options={"py2exe": {"skip_archive": True, "includes": ["sip"]}})

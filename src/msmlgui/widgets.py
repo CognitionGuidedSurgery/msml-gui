@@ -6,12 +6,7 @@ from PyQt4.QtGui import *
 
 from msml.titen import titen
 
-TPL_BOX = titen('''<html><body>
-        <center>
-            <strong>{$i}</strong><br/>
-            <hr/>
-            {$op}
-        </center></body></html>''')
+
 
 def drange(start, stop, step):
     r = start
@@ -24,26 +19,26 @@ class MSMLGraphicsView(QGraphicsView):
         super(QGraphicsView, self).__init__(parent)
         self.setMouseTracking(True)
 
-        self.zoom_widget = QSlider(Qt.Horizontal, parent)
-        self.zoom_widget.setTickInterval(10)
-        self.zoom_widget.setTickPosition(QSlider.TicksBelow)
-        self.zoom_widget.setMaximum(400)
-        self.zoom_widget.setValue(100)
-        self.zoom_widget.setMinimum(50)
-        self.zoom_widget.setPageStep(10)
-        self.zoom_widget.setGeometry(300,0, 300, 30)
+        # self.zoom_widget = QSlider(Qt.Horizontal, parent)
+        # self.zoom_widget.setTickInterval(10)
+        # self.zoom_widget.setTickPosition(QSlider.TicksBelow)
+        # self.zoom_widget.setMaximum(400)
+        # self.zoom_widget.setValue(100)
+        # self.zoom_widget.setMinimum(50)
+        # self.zoom_widget.setPageStep(10)
+        # self.zoom_widget.setGeometry(300,0, 300, 30)
 
-        self.zoom_widget.valueChanged.connect(self.set_zoom)
+        # self.zoom_widget.valueChanged.connect(self.set_zoom)
         #self.zoom_widget.valueChanged.connect(lambda v: self.update_overview_map())
 
-        self.view = QGraphicsView()
-        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        self.overview_label = QLabel(self)
-        self.overview_label.setGeometry(-10, -10, 250, 250)
-        self.overview_label.setScaledContents(True)
-        self.last_time = time.time()
+        # self.view = QGraphicsView()
+        # self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        #
+        # self.overview_label = QLabel(self)
+        # self.overview_label.setGeometry(-10, -10, 250, 250)
+        # self.overview_label.setScaledContents(True)
+        # self.last_time = time.time()
 
 
     def set_zoom(self, value):
@@ -53,15 +48,15 @@ class MSMLGraphicsView(QGraphicsView):
 
 
     def drawForeground(self, painter, rect):
-        run = time.time()
-        if run - self.last_time  > 1:
-            self.view.setGeometry(self.geometry())
-            self.view.setScene(self.scene())
-            pixMap = QPixmap.grabWidget(self.view)
-            pixMap = pixMap.scaled(250, 250, Qt.KeepAspectRatio)#, Qt.SmoothTransformation)
-            self.overview_label.setPixmap(pixMap)
-
-            self.last_time = run
+        # run = time.time()
+        # if run - self.last_time  > 1:
+        #     self.view.setGeometry(self.geometry())
+        #     self.view.setScene(self.scene())
+        #     pixMap = QPixmap.grabWidget(self.view)
+        #     pixMap = pixMap.scaled(250, 250, Qt.KeepAspectRatio)#, Qt.SmoothTransformation)
+        #     self.overview_label.setPixmap(pixMap)
+        #
+        #     self.last_time = run
 
         QGraphicsView.drawForeground(self, painter, rect)
 
@@ -196,9 +191,16 @@ class MSMLGraphicsScene(QGraphicsScene):
     def mouseDoubleClickEvent(self, event):
         QGraphicsScene.mouseDoubleClickEvent(self, event)
 
+from .shared import *
 
+class HelpItem(object):
+    def get_help(self):
+        return "No help information"
 
-class TaskShape(QGraphicsItemGroup):
+class TaskShape(QGraphicsItemGroup, HelpItem):
+    OUTER_RECT = QRectF(-100, -50, 200, 100)
+    TEXT_POS = (-80,-40)
+    TEXT_WIDTH = 160
     def __init__(self, task, mainframe,  parent = None):
         QGraphicsItemGroup.__init__(self, parent)
         self.mainframe = mainframe
@@ -207,47 +209,38 @@ class TaskShape(QGraphicsItemGroup):
         self.setAcceptDrops(True)
         self.setCursor(Qt.OpenHandCursor)
 
-        self.outer_rect = QGraphicsRectItem(-100, -50, 200, 100, self)
+        self.outer_rect = QGraphicsRectItem(TaskShape.OUTER_RECT, self)
         self.addToGroup(self.outer_rect)
 
         self.text  = QGraphicsTextItem(self.task.id, self)
         self.addToGroup(self.text)
-        self.text.setPos(-80,-40)
+        self.text.setPos(*TaskShape.TEXT_POS)
+        self.text.setTextWidth(TaskShape.TEXT_WIDTH)
+        self.text.setHtml(tpl_task_shape(i=self.task.id, op=self.task.operator.name))
 
-        self.text.setTextWidth(160)
-        self.text.setHtml(TPL_BOX(i=self.task.id, op=self.task.operator.name))
+        self.inputs_boxes = {}
+        self.outputs_boxes =  {}
 
-        self.inputs = {}
-
-        y = -40
-        x = -100
-        delta = 15
-        sz = 10
-
+        y, x, delta, sz  = -90, -40, 15, 10
         for idx, slot in enumerate(self.task.operator.input_names()):
-            rect = QGraphicsRectItem(x - sz/2,  y + idx * delta, sz, sz, self)
+            rect = QGraphicsRectItem( y + idx * delta, x - sz/2, sz, sz, self)
             rect.setBrush(QBrush(Qt.darkRed))
             self.addToGroup(rect)
-            self.inputs[slot] = rect
+            self.inputs_boxes[slot] = rect
 
-        y = 30
-        x = 100
-        delta = 15
-        sz = 10
-
-        self.outputs =  {}
-
+        y, x, delta, sz  = 80, 40, 15, 10
         for idx, slot in enumerate(self.task.operator.output_names()):
-            rect = QGraphicsRectItem(x-sz/2,  y - idx * delta, sz, sz, self)
+            rect = QGraphicsRectItem(y - idx * delta, x-sz/2, sz, sz, self)
             rect.setBrush(QBrush(Qt.blue))
             self.addToGroup(rect)
-            self.outputs[slot] = rect
-
-
+            self.outputs_boxes[slot] = rect
 
         self.setFlag(QGraphicsItem.ItemIsMovable)
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsFocusable)
+
+    def get_help(self):
+        return tpl_operator_help(self.task.operator)
 
     def dragEnterEvent(self, event):
         assert isinstance(event, QGraphicsSceneDragDropEvent)
@@ -256,27 +249,7 @@ class TaskShape(QGraphicsItemGroup):
         assert isinstance(event, QGraphicsSceneDragDropEvent)
 
     def dropEvent(self, event):
-            assert isinstance(event, QGraphicsSceneDragDropEvent)
-
-
-
-    # def paint(self, painter, option, widget = None):
-    #
-    #     if self.isSelected():
-    #         self.mainframe.show_in_operator_help(self.task.operator)
-    #
-    #         painter.save()
-    #         painter.setBrush(QBrush(Qt.lightGray))
-    #         painter.drawRoundedRect(self.rect, 20, 20)
-    #         painter.restore()
-    #     else:
-    #         painter.drawRoundedRect(self.rect, 20, 20)
-    #
-    #     painter.drawText(self.rect, Qt.AlignHCenter | Qt.AlignTop, self.task.id)
-    #
-    #     r = QRectF(self.rect)
-    #     r.setY(r.y() + 15)
-    #     painter.drawText(r,  Qt.AlignHCenter | Qt.AlignTop, self.task.operator.name)
+        assert isinstance(event, QGraphicsSceneDragDropEvent)
 
 class GraphicsArrowItem(QGraphicsLineItem):
     def __init__(self, *args):
@@ -289,8 +262,6 @@ class GraphicsArrowItem(QGraphicsLineItem):
         import math
 
         phi = 45/360.0*2*math.pi
-
-
 
         angle = math.acos(self.line().dx() / self.line().length())
 
@@ -317,49 +288,6 @@ class GraphicsArrowItem(QGraphicsLineItem):
             #painter.setPen(QPen(self, 1, Qt::DashLine))
             pass
 
-    '''
-        if self.start.collidesWithItem(self.end):
-            return
-
-        myPen = self.pen()
-        painter.setPen(myPen)
-        #painter.setBrush(myColor)
-
-        centerLine = QLineF(self.start.pos(), self.end.pos())
-        endPolygon = QPolygonF(self.end.polygon())
-        p1 = endPolygon.first() + self.end.pos()
-
-        for i in range(endPolygon.count()):
-            p2 = endPolygon.at(i) + self.end.pos()
-            polyLine = QLineF(p1, p2)
-            intersectType, intersectPoint = polyLine.intersect(centerLine)
-            if intersectType == QLineF.BoundedIntersection: break
-            p1 = p2
-
-        self.setLine(QLineF(intersectPoint, myStartItem.pos()))
-
-        import math
-        angle = math.acos(line().dx() / line().length())
-        if line().dy() >= 0:
-            angle = (Pi * 2) - angle
-
-            arrowP1 = self.line().p1() + QPointF(sin(angle + math.pi / 3) * arrowSize, math.cos(angle + math.pi / 3) * arrowSize)
-            arrowP2 = self.line().p1() + QPointF(sin(angle + math.pi - math.pi / 3) * arrowSize, math.cos(angle + math.pi - math.pi / 3) * arrowSize)
-
-            self.arrow.clear()
-            self.arrow << line().p1() << arrowP1 << arrowP2
-            painter.drawLine(self.line())
-            painter.drawPolygon(self.arrow)
-            if self.isSelected():
-                #painter.setPen(QPen(self, 1, Qt::DashLine))
-                pass
-
-            myLine = self.line()
-            myLine.translate(0, 4.0)
-            painter.drawLine(myLine)
-            myLine.translate(0,-8.0)
-            painter.drawLine(myLine)'''
-
     def boundingRect(self):
         extra = (self.pen().width() + 20) / 2.0
 
@@ -371,8 +299,42 @@ class GraphicsArrowItem(QGraphicsLineItem):
         path.addPolygon(self.arrowHead)
         return path
 
+class SceneShape(QGraphicsItemGroup, HelpItem):
+    OUTER_RECT = QRectF(-100, -50 , 200, 100)
 
-class GraphicsTaskArrowItem(QGraphicsPolygonItem):
+    def __init__(self, mainframe, msmlfile, parent = None):
+        QGraphicsItemGroup.__init__(self, parent)
+        self.msmlfile = msmlfile
+        self.mainframe = mainframe
+
+        self.setAcceptDrops(True)
+        self.setCursor(Qt.OpenHandCursor)
+
+        self.setFlag(QGraphicsItem.ItemIsMovable)
+        self.setFlag(QGraphicsItem.ItemIsSelectable)
+        self.setFlag(QGraphicsItem.ItemIsFocusable)
+
+        self._render()
+
+
+    def _render(self):
+        self.outer_rect = QGraphicsRectItem(TaskShape.OUTER_RECT, self)
+        self.addToGroup(self.outer_rect)
+
+        self.text  = QGraphicsTextItem("Scene", self)
+        self.addToGroup(self.text)
+        self.text.setPos(*TaskShape.TEXT_POS)
+        self.text.setTextWidth(TaskShape.TEXT_WIDTH)
+        self.text.setHtml(tpl_scene_shape(scene = self.msmlfile.scene))
+
+        self.inputs_boxes = {}
+        self.outputs_boxes =  {}
+        #TODO generate output boxes
+
+    def get_help(self):
+        return "#TODO"
+
+class GraphicsTaskArrowItem(QGraphicsPolygonItem, HelpItem):
     def __init__(self, taskA, slotA, taskB, slotB):
         QGraphicsPolygonItem.__init__(self)
 
@@ -389,9 +351,12 @@ class GraphicsTaskArrowItem(QGraphicsPolygonItem):
         self.setFlag(QGraphicsItem.ItemIsMovable, False)
 
 
+    def get_help(self):
+        return "todo"
+
     def _calc_polygon(self):
-        rectA = self.taskA.outputs[self.slotA]
-        rectB = self.taskB.inputs[self.slotB]
+        rectA = self.taskA.outputs_boxes[self.slotA]
+        rectB = self.taskB.inputs_boxes[self.slotB]
 
         assert isinstance(rectA, QGraphicsRectItem)
         assert isinstance(rectB, QGraphicsRectItem)
@@ -399,13 +364,18 @@ class GraphicsTaskArrowItem(QGraphicsPolygonItem):
         centerA = self.taskA.mapRectToScene(rectA.rect()).center()
         centerB = self.taskB.mapRectToScene(rectB.rect()).center()
 
+        half_y =  0.5 * abs(centerB.y() - centerA.y())
+
+        print(half_y, centerB.y() , centerA.y())
+        mid_one = QPointF(centerA.x(), centerA.y() + half_y)
+        mid_two = QPointF(centerB.x(), centerA.y() + half_y)
 
         polygon = QPolygonF()
-        polygon << centerA << centerB
+        polygon << centerA << mid_one << mid_two << centerB
         self.setPolygon(polygon)
-
-
 
     def paint(self, painter, option, widget=None):
         self._calc_polygon()
         QGraphicsPolygonItem.paint(self, painter, option, widget)
+
+import math
