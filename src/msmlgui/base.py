@@ -6,17 +6,16 @@ import msml.model.alphabet
 import msml.env
 import msml.frontend
 import msml.model
-from jinja2 import Environment, PackageLoader
+import msml.xml
 
-from msmlgui import shared
 from .widgets import *
-from path import path
 
-import msmlgui.rcc
+from .dialogs import *
+from msmlgui import shared
+from msmlgui.helper import *
 
-jenv = Environment(loader = PackageLoader(__name__))
+
 PKG_DIR = path(__file__).dirname()
-
 
 from PyQt4 import QtCore, QtGui, QtWebKit
 
@@ -25,47 +24,34 @@ try:
 except AttributeError:
     _fromUtf8 = lambda s: s
 
-from msmlgui.widgets import MSMLGraphicsView
-
-from .dialogs import *
 
 class MSMLMainFrame(QtGui.QMainWindow):
     def __init__(self):
         QMainWindow.__init__(self)
+
+        self.msml_model = msml_file_factory()
+        self.msml_pdata = UiPersistentData()
+        self.msml_vdata = UiVolatileData()
+
         self.setupUi()
 
         opListModel = OperatorListModel()
-
         self.listOperators.setModel(opListModel)
-        print self.listOperators.itemDelegate()
-        #view = ViewDelegate()
-        #self.listOperators.setItemDelegate(view)
         self.listOperators.setVerticalScrollMode(QtGui.QListView.ScrollPerPixel)
 
-        self.listOperators.clicked.connect(lambda index: self.show_in_operator_help(index.data(Qt.UserRole).toPyObject()))
+        self.listOperators.clicked.connect(
+            lambda index: self.show_in_operator_help(index.data(Qt.UserRole).toPyObject()))
         self.listOperators.doubleClicked.connect(
             lambda index: self.drop_new_operator(index.data(Qt.UserRole).toPyObject()))
-#        self.graphicsView.dropEvent.connect(self.drop_new_operator)
-
-        self.msmlobj = msml.model.MSMLFile()
-        self.graphicsScene = MSMLGraphicsScene(self.graphicsView)
-        self.graphicsScene.mainframe = self
-        self.scene_node = SceneShape(self, self.msmlobj)
-        self.graphicsScene.addItem(self.scene_node)
-        self.graphicsView.setScene(self.graphicsScene)
-
-        self.mappingTask = {}
+        #        self.graphicsView.dropEvent.connect(self.drop_new_operator)
 
 
-
+        self.last_path = path("~").expanduser()  #TODO init by config
         self.env_dialog = EnvEditor(self)
         self.scene_dialog = SceneEditor(self)
 
     def _setupMenu(self):
-        self.actionOpen = QtGui.QAction("Open", self)
-        self.actionNew = QtGui.QAction("New", self)
-        self.actionOpen.setIcon(QIcon.fromTheme("document-open"))
-        self.actionClose = QtGui.QAction("Close", self)
+        icon = lambda x: QIcon(r':/icons/tango/16x16/%s.png' % x)
 
         self.actionShowDockParameters = QAction("Paramters", self)
         self.actionShowDockHelp = QAction("Help", self)
@@ -80,21 +66,31 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionShowEnvEditor = QAction("Edit Environment ...", self)
         self.actionShowSceneEditor = QAction("Edit Scene ...", self)
 
-        self.actionShowEnvEditor.setShortcut(QKeySequence("Alt-e"))
-        self.actionShowSceneEditor.setShortcut(QKeySequence("Alt-s"))
-
+        self.actionShowEnvEditor.setShortcut(QKeySequence("Ctrl-e"))
+        self.actionShowSceneEditor.setShortcut(QKeySequence("Ctrl-s"))
 
         self.actionShowEnvEditor.triggered.connect(self.show_env_dialog)
         self.actionShowSceneEditor.triggered.connect(self.show_scene_dialog)
-
 
         self.menubar = QtGui.QMenuBar(self)
 
         ## file
         self.menuFile = self.menubar.addMenu("File")
-        self.menuFile.addAction(self.actionOpen)
+
+        self.actionNew = self.menuFile.addAction(icon("document-new"), "New")
+        self.actionNew.setShortcut(QKeySequence.New)
+
+
+        self.actionOpen = self.menuFile.addAction(icon("document-open"), "Open")
+        self.actionOpen.setShortcut(QKeySequence.Open)
+
+        self.actionOpen.triggered.connect(self.search_open_file)
+
         self.menuFile.addSeparator()
-        self.menuFile.addAction(self.actionClose)
+
+        self.actionClose = self.menuFile.addAction(icon("document-close"), "Close")
+        self.actionClose.setShortcut(QKeySequence("Ctrl-F4"))
+
 
         ##Views
         self.menuViews = self.menubar.addMenu("Views")
@@ -124,7 +120,10 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.centralwidget = QtGui.QWidget(self)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
         self.centralWidgetLayout = QtGui.QGridLayout(self.centralwidget)
-        self.graphicsView = MSMLGraphicsView(self.centralwidget)
+        self.graphicsView = MSMLGraphicsView(self, self.centralwidget)
+
+        self.graphicsScene = self.graphicsView.renew()
+
         self.graphicsView.setRenderHints(
             QtGui.QPainter.Antialiasing | QtGui.QPainter.HighQualityAntialiasing | QtGui.QPainter.TextAntialiasing)
         self.graphicsView.setRubberBandSelectionMode(QtCore.Qt.ContainsItemBoundingRect)
@@ -184,7 +183,8 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.setObjectName(_fromUtf8("MainWindow"))
         self.resize(1012, 771)
         self.setDockNestingEnabled(True)
-        self.setDockOptions(QtGui.QMainWindow.AllowNestedDocks|QtGui.QMainWindow.AllowTabbedDocks|QtGui.QMainWindow.AnimatedDocks)
+        self.setDockOptions(
+            QtGui.QMainWindow.AllowNestedDocks | QtGui.QMainWindow.AllowTabbedDocks | QtGui.QMainWindow.AnimatedDocks)
 
         self._setupMenu()
         self._setupStatusbar()
@@ -199,102 +199,55 @@ class MSMLMainFrame(QtGui.QMainWindow):
         QtCore.QMetaObject.connectSlotsByName(self)
 
     def open_file(self, filename):
-        pass #TODO
+        try:
+            self.msml_vdata = UiVolatileData()
+            self.msml_pdata = UiPersistentData.load_from_msml(filename)
+            self.msml_model = msml.xml.load_msml_file(filename)
+            self.graphicsScene = self.graphicsView.renew()
+        except IndexError as e:
+            raise e
+
 
     def search_open_file(self):
-        pass #TODO
+        MSML_FILE_FILTER = "MSML (*.xml *.msml *.msml.xml);; All types (*.*)"
+        filename, _ = QFileDialog.getOpenFileNameAndFilter(self, "Open MSML file", self.last_path, MSML_FILE_FILTER)
+
+        if filename:
+            filename = path(filename)
+            self.last_path = filename.dirname()
+            self.open_file(filename)
 
     def drop_new_operator(self, operator):
-        name = shared.generate_name()
+        name = generate_name()
 
         task = msml.model.Task(name, {'id': name})
         task.operator = operator
-        self.msmlobj.workflow.add_task(task)
+        self.msml_model.workflow.add_task(task)
 
-        shape = TaskShape(task,self)
-
+        shape = TaskShape(task, self)
         self.graphicsScene.addItem(shape)
 
-        self.mappingTask[task] = shape
-        self.mappingTask[shape] = task
+        self.msml_vdata.task_map[task] = shape
+        self.msml_vdata.task_map[shape] = task
 
     def set_task_active_propertyeditor(self, task):
         model = PropertyOperatorModel(task, self.tabProperties)
         self.tabProperties.setModel(model)
 
     def show_in_operator_help(self, operator):
-        html = jenv.get_template("operator_help.html").render(o = operator)
+        html = tpl_operator_help(o=operator)
         self.webOperatorHelp.setHtml(html)
 
     def show_env_dialog(self, *args):
         self.env_dialog.open()
 
     def show_scene_dialog(self, *args):
-        self.scene_dialog.model = self.msmlobj
+        self.scene_dialog.model = self.msml_model
         self.scene_dialog.open()
-
-class ViewDelegate(QtGui.QItemDelegate):
-    def __init__(self):
-        QtGui.QItemDelegate.__init__(self)
-
-    def sizeHint(self, QStyleOptionViewItem, QModelIndex):
-        return QtCore.QSize(15,20)
-
-    def paint(self, painter, option, index):
-        variant = index.data()
-        assert(painter, QtGui.QPainter)
-        assert(variant,QtCore.QVariant)
-        op = variant.toPyObject()
-        assert(op, msml.model.alphabet.Operator)
-
-#        print option
-
-        painter.save()
-        painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
-        if option.state & QtGui.QStyle.State_Selected:
-            painter.setBrush(option.palette.highlightedText())
-            painter.setBrush(QtGui.QBrush(QtCore.Qt.green))
-        else:
-            painter.setBrush(QtGui.QBrush(QtCore.Qt.white))
-        painter.drawRect(option.rect)
-
-        painter.setPen(QtGui.QPen(QtCore.Qt.black))
-        painter.drawText(option.rect, QtCore.Qt.AlignLeft,  op.name)
-        painter.restore()
-
-
-        # rahmen = option.rect.adjusted(self.abstand, self.abstand,
-        #                             -self.abstand, -self.abstand)
-        # rahmenTitel = rahmen.adjusted(self.abstandInnen,
-        #               self.abstandInnen, -self.abstandInnen+1, 0)
-        # rahmenTitel.setHeight(self.titelHoehe)
-        # rahmenTitelText = rahmenTitel.adjusted(self.abstandText,
-        #                                 0, self.abstandText, 0)
-        # datensatz = index.data().toList()
-        # painter.save()
-        # painter.setPen(self.rahmenStift)
-        # painter.drawRect(rahmen)
-        # painter.fillRect(rahmenTitel, self.titelFarbe)
-        #
-        # # Titel schreiben
-        # painter.setPen(self.titelTextStift)
-        # painter.setFont(self.titelSchriftart)
-        # painter.drawText(rahmenTitelText,
-        #             QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter,
-        #             datensatz[0].toString())
-        #
-        # # Adresse schreiben
-        # painter.setPen(self.textStift)
-        # painter.setFont(self.textSchriftart)
-        # for i, eintrag in enumerate(datensatz[1:]):
-        #     painter.drawText(rahmenTitel.x() + self.abstandText,
-        #            rahmenTitel.bottom() + (i+1)*self.zeilenHoehe,
-        #            "%s" % eintrag.toString())
-        # painter.restore()
 
 
 class PropertyOperatorModel(QAbstractTableModel):
-    def __init__(self, task, parent = None):
+    def __init__(self, task, parent=None):
         QAbstractTableModel.__init__(self)
         assert isinstance(task.operator, msml.model.Operator)
 
@@ -303,13 +256,13 @@ class PropertyOperatorModel(QAbstractTableModel):
         self.keys.sort()
         self.operator = task.operator
 
-    def rowCount(self, parent = QModelIndex()):
+    def rowCount(self, parent=QModelIndex()):
         return len(self.operator.parameters)
 
-    def columnCount(self, parent = QModelIndex()):
+    def columnCount(self, parent=QModelIndex()):
         return 2
 
-    def headerData(self, section, orientation, role = Qt.DisplayRole):
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return QVariant()
         if orientation == Qt.Horizontal:
@@ -318,7 +271,7 @@ class PropertyOperatorModel(QAbstractTableModel):
         else:
             return QVariant()
 
-    def data(self, index, role = Qt.DisplayRole):
+    def data(self, index, role=Qt.DisplayRole):
         #ToolTipRole, DecorationRole
         if role == Qt.DisplayRole:
             i = index.row()
@@ -333,7 +286,7 @@ class PropertyOperatorModel(QAbstractTableModel):
                     return self.task.attributes[k]
                 except:
                     pass
-#        print role
+                    #        print role
         return QVariant()
 
     def flags(self, index):
@@ -350,10 +303,10 @@ class OperatorListModel(QtCore.QAbstractListModel):
         self.operators = shared.msml_app.alphabet.operators
         self._order = list(self.operators.keys())
 
-    def rowCount(self, parent = QtCore.QModelIndex()):
+    def rowCount(self, parent=QtCore.QModelIndex()):
         return len(self.operators)
 
-    def data(self, index, role = Qt.DisplayRole):
+    def data(self, index, role=Qt.DisplayRole):
         if index.isValid():
             key = self._order[index.row()]
             op = self.operators[key]

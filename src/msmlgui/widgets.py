@@ -1,12 +1,10 @@
 __author__ = 'weigl'
 
-from PyQt4 import QtCore, QtGui
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
-from msml.titen import titen
-
-
+from msmlgui.helper.template import *
+import msml.model
 
 def drange(start, stop, step):
     r = start
@@ -15,9 +13,10 @@ def drange(start, stop, step):
         r += step
 
 class MSMLGraphicsView(QGraphicsView):
-    def __init__(self, parent = None):
+    def __init__(self, mainframe, parent = None):
         super(QGraphicsView, self).__init__(parent)
         self.setMouseTracking(True)
+        self.mainframe = mainframe
 
         # self.zoom_widget = QSlider(Qt.Horizontal, parent)
         # self.zoom_widget.setTickInterval(10)
@@ -41,6 +40,64 @@ class MSMLGraphicsView(QGraphicsView):
         # self.last_time = time.time()
 
 
+    def renew(self):
+        "removes the whole graphics and add default"
+
+        scene = MSMLGraphicsScene(self.mainframe, self)
+        self.scene_node = SceneShape(self.mainframe, scene)
+        self.scene_node.setPos(* self.mainframe.msml_pdata.get_task_position(self.scene_node))
+        scene.addItem(self.scene_node)
+
+        import msmlgui.shared, msml.exporter
+        from msml.run import DefaultGraphBuilder
+
+
+
+        m = self.mainframe.msml_model
+        e = msml.exporter.get_exporter("nsofa")(m) # TODO use shared.msml_app
+        m.exporter = e
+        m.validate()
+
+
+        graphbuilder = DefaultGraphBuilder(m,e)
+
+        dag = graphbuilder.dag
+
+        for t in self.mainframe.msml_model.workflow._tasks.values():
+            assert isinstance(t,msml.model.Task)
+            t.bind(msmlgui.shared.msml_app.alphabet)
+
+            ts = TaskShape(t, self.mainframe, scene)
+            ts.setPos(*self.mainframe.msml_pdata.get_task_position(t))
+
+            self.mainframe.msml_vdata.task_map[t] = ts
+            self.mainframe.msml_vdata.task_map[ts] = t
+
+        for x,y in dag.edges_iter():
+            if isinstance(x, msml.model.MSMLVariable): continue #TODO handle variables
+            if isinstance(y, msml.exporter.Exporter): continue #TODO handle exporter
+
+
+            a = self.mainframe.msml_vdata.task_map[x]
+            b = self.mainframe.msml_vdata.task_map[y]
+
+            ref = dag.get_edge_data(x,y)[0]['ref']
+
+            sa = ref.linked_from.name
+            sb = ref.linked_to.name
+
+            cnnctd = GraphicsTaskArrowItem(a, sa, b, sb)
+
+            scene.addItem(cnnctd)
+
+
+        for a in self.mainframe.msml_pdata.annotations:
+            ashape = AnnotationShape(a,scene)
+            scene.addItem(ashape)
+
+        self.setScene(scene)
+        return scene
+
     def set_zoom(self, value):
         value /=100.0
         transform = QTransform(value, 0, 0, 0, value, 0, 0, 0, 1)
@@ -60,14 +117,14 @@ class MSMLGraphicsView(QGraphicsView):
 
         QGraphicsView.drawForeground(self, painter, rect)
 
-import time
 
 class MSMLGraphicsScene(QGraphicsScene):
-    def __init__(self, parent = None):
+    def __init__(self, mainframe, parent = None):
         super(QGraphicsScene, self).__init__(parent)
+        assert mainframe is not None
+        self.mainframe = mainframe
         self.selectionChanged.connect(self.onItemSelected)
 
-        self.mainframe = None
         self.line_mode = False
         self.line_shape = None
         self.from_task = None
@@ -181,17 +238,22 @@ class MSMLGraphicsScene(QGraphicsScene):
             for i in items: self.removeItem(i)
 
     def onItemSelected(self):
-        items = self.selectedItems()
-        if items:
+        try:
+            items = self.selectedItems()
             item = items[0]
-            self.mainframe.show_in_operator_help(item.task.operator)
-            self.mainframe.set_task_active_propertyeditor(item.task)
+            html = item.get_help()
+            self.mainframe.webOperatorHelp.setHtml(html)
+
+            if isinstance(item, TaskShape):
+                self.mainframe.set_task_active_propertyeditor(item.task)
+
+        except IndexError as e:
+            pass
 
 
     def mouseDoubleClickEvent(self, event):
         QGraphicsScene.mouseDoubleClickEvent(self, event)
 
-from .shared import *
 
 class HelpItem(object):
     def get_help(self):
@@ -201,8 +263,9 @@ class TaskShape(QGraphicsItemGroup, HelpItem):
     OUTER_RECT = QRectF(-100, -50, 200, 100)
     TEXT_POS = (-80,-40)
     TEXT_WIDTH = 160
+
     def __init__(self, task, mainframe,  parent = None):
-        QGraphicsItemGroup.__init__(self, parent)
+        QGraphicsItemGroup.__init__(self, None,  parent)
         self.mainframe = mainframe
         self.task = task
 
@@ -212,11 +275,11 @@ class TaskShape(QGraphicsItemGroup, HelpItem):
         self.outer_rect = QGraphicsRectItem(TaskShape.OUTER_RECT, self)
         self.addToGroup(self.outer_rect)
 
-        self.text  = QGraphicsTextItem(self.task.id, self)
+        self.text = QGraphicsTextItem(self.task.id, self)
         self.addToGroup(self.text)
         self.text.setPos(*TaskShape.TEXT_POS)
         self.text.setTextWidth(TaskShape.TEXT_WIDTH)
-        self.text.setHtml(tpl_task_shape(i=self.task.id, op=self.task.operator.name))
+        self.text.setHtml(tpl_task_shape(i=self.task.id, op=self.task.name))
 
         self.inputs_boxes = {}
         self.outputs_boxes =  {}
@@ -240,7 +303,7 @@ class TaskShape(QGraphicsItemGroup, HelpItem):
         self.setFlag(QGraphicsItem.ItemIsFocusable)
 
     def get_help(self):
-        return tpl_operator_help(self.task.operator)
+        return tpl_operator_help(o = self.task.operator)
 
     def dragEnterEvent(self, event):
         assert isinstance(event, QGraphicsSceneDragDropEvent)
@@ -302,6 +365,41 @@ class GraphicsArrowItem(QGraphicsLineItem):
 class SceneShape(QGraphicsItemGroup, HelpItem):
     OUTER_RECT = QRectF(-100, -50 , 200, 100)
 
+    def __init__(self, mainframe, parent = None):
+        QGraphicsItemGroup.__init__(self, None, parent)
+        self.mainframe = mainframe
+
+        self.setAcceptDrops(True)
+        self.setCursor(Qt.OpenHandCursor)
+
+        self.setFlag(QGraphicsItem.ItemIsMovable)
+        self.setFlag(QGraphicsItem.ItemIsSelectable)
+        self.setFlag(QGraphicsItem.ItemIsFocusable)
+
+        self._render()
+
+
+    def _render(self):
+        self.outer_rect = QGraphicsRectItem(TaskShape.OUTER_RECT, self)
+        self.addToGroup(self.outer_rect)
+
+        self.text  = QGraphicsTextItem("Scene", self)
+        self.addToGroup(self.text)
+        self.text.setPos(*TaskShape.TEXT_POS)
+        self.text.setTextWidth(TaskShape.TEXT_WIDTH)
+        self.text.setHtml(tpl_scene_shape(scene = self.mainframe.msml_model.scene))
+
+        self.inputs_boxes = {}
+        self.outputs_boxes =  {}
+        #TODO generate output boxes
+
+    def get_help(self):
+        return "#TODO"
+
+
+class AnnotationShape(QGraphicsItemGroup, HelpItem):
+    OUTER_RECT = QRectF(-100, -50 , 200, 100)
+
     def __init__(self, mainframe, msmlfile, parent = None):
         QGraphicsItemGroup.__init__(self, parent)
         self.msmlfile = msmlfile
@@ -333,6 +431,7 @@ class SceneShape(QGraphicsItemGroup, HelpItem):
 
     def get_help(self):
         return "#TODO"
+
 
 class GraphicsTaskArrowItem(QGraphicsPolygonItem, HelpItem):
     def __init__(self, taskA, slotA, taskB, slotB):
@@ -378,4 +477,5 @@ class GraphicsTaskArrowItem(QGraphicsPolygonItem, HelpItem):
         self._calc_polygon()
         QGraphicsPolygonItem.paint(self, painter, option, widget)
 
-import math
+
+
