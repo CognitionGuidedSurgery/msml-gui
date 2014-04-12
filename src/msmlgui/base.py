@@ -9,7 +9,6 @@ import msml.model
 import msml.xml
 
 from .widgets import *
-
 from .dialogs import *
 from msmlgui import shared
 from msmlgui.helper import *
@@ -18,6 +17,8 @@ from msmlgui.helper import *
 PKG_DIR = path(__file__).dirname()
 
 from PyQt4 import QtCore, QtGui, QtWebKit
+
+icon = lambda x: QIcon(r':/icons/tango/16x16/%s.png' % x)
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -50,19 +51,12 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.env_dialog = EnvEditor(self)
         self.scene_dialog = SceneEditor(self)
 
+        a = AnnotationShape(
+            "<html><a href='https://github.com/CognitionGuidedSurgery/msml/' target='new'>Welcome to MSML</a>", self,
+            self.graphicsScene)
+        a.setPos(200, 200)
+
     def _setupMenu(self):
-        icon = lambda x: QIcon(r':/icons/tango/16x16/%s.png' % x)
-
-        self.actionShowDockParameters = QAction("Paramters", self)
-        self.actionShowDockHelp = QAction("Help", self)
-        self.actionShowDockVariables = QAction("Variables", self)
-        self.actionShowDockOperators = QAction("Operators", self)
-
-        self.actionShowDockParameters.setCheckable(True)
-        self.actionShowDockOperators.setCheckable(True)
-        self.actionShowDockHelp.setCheckable(True)
-        self.actionShowDockVariables.setCheckable(True)
-
         self.actionShowEnvEditor = QAction("Edit Environment ...", self)
         self.actionShowSceneEditor = QAction("Edit Scene ...", self)
 
@@ -80,7 +74,6 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionNew = self.menuFile.addAction(icon("document-new"), "New")
         self.actionNew.setShortcut(QKeySequence.New)
 
-
         self.actionOpen = self.menuFile.addAction(icon("document-open"), "Open")
         self.actionOpen.setShortcut(QKeySequence.Open)
 
@@ -91,15 +84,23 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionClose = self.menuFile.addAction(icon("document-close"), "Close")
         self.actionClose.setShortcut(QKeySequence("Ctrl-F4"))
 
+        #Tools
+        self.menuTools = self.menubar.addMenu("Tools")
+
+        self.actionRun = self.menuTools.addAction(icon("format-text-bold"), "Execute...")
+        self.actionRun = self.menuTools.addAction(icon("format-text-italic"), "Execute in Cloud...")
+
+        self.menuTools.addAction(self.actionAddAnnotation)
+
+
 
         ##Views
         self.menuViews = self.menubar.addMenu("Views")
-        self.menuViews.addAction(self.actionShowDockVariables)
-        self.menuViews.addAction(self.actionShowDockOperators)
-        self.menuViews.addAction(self.actionShowDockHelp)
-        self.menuViews.addAction(self.actionShowDockParameters)
+        self.menuViews.addAction(self.dockVariables.toggleViewAction())
+        self.menuViews.addAction(self.dockOperator.toggleViewAction())
+        self.menuViews.addAction(self.dockHelp.toggleViewAction())
+        self.menuViews.addAction(self.dockParameters.toggleViewAction())
         self.menuViews.addSeparator()
-
         self.menuViews.addAction(self.actionShowEnvEditor)
         self.menuViews.addAction(self.actionShowSceneEditor)
 
@@ -116,6 +117,12 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.toolBar = QtGui.QToolBar(self)
         self.addToolBar(QtCore.Qt.TopToolBarArea, self.toolBar)
 
+        self.toolBar.addAction(self.actionNew)
+        self.toolBar.addAction(self.actionOpen)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionAddAnnotation)
+
+
     def _setupCentralWidget(self):
         self.centralwidget = QtGui.QWidget(self)
         self.centralwidget.setObjectName(_fromUtf8("centralwidget"))
@@ -131,53 +138,57 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.setCentralWidget(self.centralwidget)
 
     def _setupDockOperators(self):
-        self.dockWidget = QtGui.QDockWidget("Operators", self)
-        self.dockWidget.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
-        self.dockWidget.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        self.dockWidgetContents = QtGui.QWidget()
-        self.gridLayout_2 = QtGui.QGridLayout(self.dockWidgetContents)
-        self.scrollArea = QtGui.QScrollArea(self.dockWidgetContents)
-        self.scrollArea.setWidgetResizable(True)
-        self.scrollAreaWidgetContents = QtGui.QWidget()
-        self.gridLayout_5 = QtGui.QGridLayout(self.scrollAreaWidgetContents)
-        self.gridLayout_5.setMargin(0)
-        self.listOperators = QtGui.QListView(self.scrollAreaWidgetContents)
+        self.dockOperator = QtGui.QDockWidget("Operators", self)
+        self.listOperators = QtGui.QListView(self.dockOperator)
         self.listOperators.setDragEnabled(True)
-        self.listOperators.setDragDropMode(QtGui.QAbstractItemView.DragOnly)
-        self.listOperators.setObjectName(_fromUtf8("listOperators"))
-        self.gridLayout_5.addWidget(self.listOperators, 0, 1, 1, 1)
-        self.scrollArea.setWidget(self.scrollAreaWidgetContents)
-        self.gridLayout_2.addWidget(self.scrollArea, 0, 1, 1, 1)
-        self.dockWidget.setWidget(self.dockWidgetContents)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockWidget)
+        self.dockOperator.setWidget(self.listOperators)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockOperator)
 
     def _setupDockParameters(self):
-        self.dockWidget_3 = QtGui.QDockWidget("Parameters", self)
-        self.dockWidget_3.setFloating(False)
-        self.dockWidgetContents_3 = QtGui.QWidget()
-        self.gridLayout = QtGui.QGridLayout(self.dockWidgetContents_3)
-        self.scrollArea_2 = QtGui.QScrollArea(self.dockWidgetContents_3)
-        self.scrollArea_2.setWidgetResizable(True)
-        self.scrollAreaWidgetContents_2 = QtGui.QWidget()
-        self.gridLayout_6 = QtGui.QGridLayout(self.scrollAreaWidgetContents_2)
-        self.gridLayout_6.setMargin(0)
-        self.tabProperties = QtGui.QTableView(self.scrollAreaWidgetContents_2)
-        self.gridLayout_6.addWidget(self.tabProperties, 0, 0, 1, 1)
-        self.scrollArea_2.setWidget(self.scrollAreaWidgetContents_2)
-        self.gridLayout.addWidget(self.scrollArea_2, 0, 0, 1, 1)
-        self.dockWidget_3.setWidget(self.dockWidgetContents_3)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockWidget_3)
+        self.dockParameters = QDockWidget("Parameters", self)
+        self.dockParameters.setFloating(False)
+        self.tabProperties = QtGui.QTableView(self.dockParameters)
+        self.dockParameters.setWidget(self.tabProperties)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockParameters)
 
     def _setupDockHelp(self):
-        self.dockWidget_6 = QtGui.QDockWidget("Help", self)
-        self.dockWidget_6.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
-        self.dockWidgetContents_6 = QtGui.QWidget()
-        self.gridLayout_7 = QtGui.QGridLayout(self.dockWidgetContents_6)
-        self.webOperatorHelp = QtWebKit.QWebView(self.dockWidgetContents_6)
+        self.dockHelp = QtGui.QDockWidget("Help", self)
+        self.webOperatorHelp = QtWebKit.QWebView(self.dockHelp)
         self.webOperatorHelp.setUrl(QtCore.QUrl(_fromUtf8("about:blank")))
-        self.gridLayout_7.addWidget(self.webOperatorHelp, 0, 0, 1, 1)
-        self.dockWidget_6.setWidget(self.dockWidgetContents_6)
-        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockWidget_6)
+        self.dockHelp.setWidget(self.webOperatorHelp)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockHelp)
+
+    def _setupDockVariable(self):
+        self.dockVariables = QDockWidget("Variables", self)
+        widget = QWidget(self.dockVariables)
+        self.tableVariables = QTableView()
+        layout = QVBoxLayout(widget)
+        widget.setLayout(layout)
+
+        layout.addWidget(self.tableVariables)
+
+        buttons = QWidget(widget)
+        blayout = QBoxLayout(QBoxLayout.LeftToRight, buttons)
+
+        self.actionAddVariable = QAction(icon('folder-new'), "add", self)
+        self.actionDeleteVariable = QAction(icon('edit-cut'), "delete", self)
+
+        blayout.addSpacing(10)
+
+        btn1 = QToolButton(self)
+        btn1.setDefaultAction(self.actionDeleteVariable)
+        btn2 = QToolButton(self)
+        btn2.setDefaultAction(self.actionAddVariable)
+
+        blayout.addSpacing(20)
+        blayout.addWidget(btn1)
+        blayout.addWidget(btn2)
+
+        layout.addWidget(buttons)
+
+        self.dockVariables.setWidget(widget)
+        self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockVariables)
+
 
     def setupUi(self):
         self.setObjectName(_fromUtf8("MainWindow"))
@@ -186,15 +197,18 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.setDockOptions(
             QtGui.QMainWindow.AllowNestedDocks | QtGui.QMainWindow.AllowTabbedDocks | QtGui.QMainWindow.AnimatedDocks)
 
-        self._setupMenu()
-        self._setupStatusbar()
-        self._setupToolBar()
+        self.actionAddAnnotation = QAction(icon("address-book-new"), "Add Annotation", self)
 
         ## centeral widget
         self._setupCentralWidget()
         self._setupDockOperators()
         self._setupDockParameters()
         self._setupDockHelp()
+        self._setupDockVariable()
+
+        self._setupMenu()
+        self._setupStatusbar()
+        self._setupToolBar()
 
         QtCore.QMetaObject.connectSlotsByName(self)
 

@@ -5,22 +5,30 @@
 </head>
 <body>
 <strong>Scene</strong>
-<hr />
-{% if scene: %}
+<hr/>
+{% if scene %}
     {% for o in scene %}
-       <strong>{{o.id}}</strong> <br />
+        <strong>{{ o.id }}</strong> <br/>
         {% for r in scene.material %}
             {% for mat in r %}
-            <dl>
-                <dt></dt>
-                <dd></dd>
-            </dl>
-            {%endfor%}
-        {%endfor%}
+                <dl>
+                    <dt></dt>
+                    <dd></dd>
+                </dl>
+            {% endfor %}
+        {% endfor %}
 
+        {% for cs in o.constraints %}
+            <h4>Constraint Set for {{ cs.for_step }}</h4>
+            {% for c in cs %}
+                {{ c }}
+            {% endfor %}
+        {% endfor %}
+
+        <hr/>
     {% endfor %}
-{%else%}
+{% else %}
     <em>no scene objects</em>
-{%endif%}
+{% endif %}
 </body>
 </html>

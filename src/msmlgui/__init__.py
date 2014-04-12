@@ -17,7 +17,6 @@ class App(object):
         pass
 
     def run(self):
-
         #TODO parse command line for addition arguments
         msmlgui.shared.msml_app = MsmlApp(add_search_path=["/home/weigl/workspace/msml/share/"])
 
@@ -36,8 +35,9 @@ class App(object):
         frame = MSMLMainFrame()
 
         from path import path
+
         f = path("/home/weigl/workspace/msml/examples/PythonExamples/color-example.xml")
-        frame.open_file(f)
+        #frame.open_file(f)
 
         frame.show()
         sys.exit(app.exec_())

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <style>
+        th {
+            text-align: right;
+        }
+
+        table {
+            width: 100%
+        }
+
+        .small {
+            font-size: 10pt;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+<h1>Variable</h1>
+
+<div class="small">
+    {{ v.sort }} {{ v.name }} = {{ v.value }}
+</div>
+<hr/>
+<table>
+    <tr>
+        <th>Name</th>
+        <td>{{ v.name }}</td>
+    </tr>
+
+    <tr>
+        <th>Type</th>
+        <td>{{ v.type }}</td>
+    </tr>
+
+    <tr>
+        <th>Format</th>
+        <td>{{ v.format }}</td>
+    </tr>
+
+    <tr>
+        <th>Value</th>
+        <td>{{ v.value }}</td>
+    </tr>
+
+</table>
+</body>
+</html>

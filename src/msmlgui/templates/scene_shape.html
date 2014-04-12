@@ -5,13 +5,15 @@
 </head>
 <body>
 <strong>Scene</strong>
-<hr />
+<hr/>
 {% if scene: %}
-    {% for o in scene %}
-       <strong>{{o.id}}</strong> <br />
-    {% endfor %}
-{%else%}
+    <ul>
+        {% for o in scene %}
+            <li>{{ o.id }}</li>
+        {% endfor %}
+    </ul>
+{% else %}
     <em>no scene objects</em>
-{%endif%}
+{% endif %}
 </body>
 </html>

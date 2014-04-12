@@ -6,7 +6,7 @@ import msml.model
 
 
 def random_position():
-    p = lambda: random.randint(-20, 20)
+    p = lambda: random.randint(-500, 500)
     return p(), p()
 
 

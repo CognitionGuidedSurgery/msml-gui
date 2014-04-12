@@ -4,10 +4,12 @@ import json
 import msml.model
 from .util import random_position
 
+
 class Annotation(object):
-    def __init__(self, pos = (0,0), text = ""):
+    def __init__(self, pos=(0, 0), text=""):
         self.text = text
         self.pos = pos
+
 
 class UiPersistentData(object):
     def __init__(self):
@@ -16,6 +18,7 @@ class UiPersistentData(object):
 
     def get_task_position(self, task):
         import msmlgui.widgets
+
         if isinstance(task, msmlgui.widgets.TaskShape):
             task = task.task
 
@@ -49,3 +52,4 @@ class UiPersistentData(object):
 class UiVolatileData(object):
     def __init__(self):
         self.task_map = {}
+        self.var_map = {}
