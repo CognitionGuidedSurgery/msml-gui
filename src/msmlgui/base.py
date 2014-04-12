@@ -79,6 +79,12 @@ class MSMLMainFrame(QtGui.QMainWindow):
 
         self.actionOpen.triggered.connect(self.search_open_file)
 
+        self.actionSave = self.menuFile.addAction(icon("document-save"), "Save")
+        self.actionSave.setShortcut(QKeySequence.Save)
+
+        self.actionSaveAs = self.menuFile.addAction(icon("document-save-as"), "Save as...")
+        self.actionSaveAs.setShortcut(QKeySequence.SaveAs)
+
         self.menuFile.addSeparator()
 
         self.actionClose = self.menuFile.addAction(icon("document-close"), "Close")
@@ -198,6 +204,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
             QtGui.QMainWindow.AllowNestedDocks | QtGui.QMainWindow.AllowTabbedDocks | QtGui.QMainWindow.AnimatedDocks)
 
         self.actionAddAnnotation = QAction(icon("address-book-new"), "Add Annotation", self)
+
 
         ## centeral widget
         self._setupCentralWidget()
