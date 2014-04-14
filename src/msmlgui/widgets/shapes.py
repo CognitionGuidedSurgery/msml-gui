@@ -68,7 +68,7 @@ class SimpleTextRectShape(QGraphicsItemGroup):
 
 
 class VariableShape(SimpleTextRectShape, HelpItem):
-    def __init__(self, variable, mainframe, scene):
+    def __init__(self, variable, mainframe, scene= None):
         self.variable = variable
         self.mainframe = mainframe
         SimpleTextRectShape.__init__(self, scene=scene,

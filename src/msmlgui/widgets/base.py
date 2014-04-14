@@ -77,16 +77,20 @@ class MSMLGraphicsView(QGraphicsView):
 
         # add Variables
         for var in m.variables.values():
-            shape = VariableShape(var, self.mainframe, scene)
-
-            self.mainframe.msml_vdata.var_map[shape] = var
-            self.mainframe.msml_vdata.var_map[var] = shape
+            if not var.name.startswith("_gen"):
+                shape = VariableShape(var, self.mainframe)
+                self.mainframe.msml_vdata.var_map[shape] = var
+                self.mainframe.msml_vdata.var_map[var] = shape
+                self.scene().addItem(shape)
 
         # add links
         for x, y in dag.edges_iter():
             #TODO better solution for this cascade
             if isinstance(x, msml.model.MSMLVariable):
-                a = self.mainframe.msml_vdata.var_map[x]
+                if x in self.mainframe.msml_vdata.var_map:
+                    a = self.mainframe.msml_vdata.var_map[x]
+                else:
+                    continue
             else:
                 a = self.mainframe.msml_vdata.task_map[x]
 
@@ -100,8 +104,14 @@ class MSMLGraphicsView(QGraphicsView):
             sa = ref.linked_from.name
             sb = ref.linked_to.name
 
-            cnnctd = GraphicsTaskArrowItem(a, sa, b, sb)
+            if isinstance(x, msml.model.MSMLVariable) and isinstance(y, msml.model.Task):
+                if sb in y.operator.parameter_names():
+                    self.scene().removeItem(a)
+                    continue
+                else:
+                    self.scene().addItem(a)
 
+            cnnctd = GraphicsTaskArrowItem(a, sa, b, sb)
             scene.addItem(cnnctd)
 
         for a in self.mainframe.msml_pdata.annotations:

@@ -51,12 +51,13 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.env_dialog = EnvEditor(self)
         self.scene_dialog = SceneEditor(self)
 
-        a = AnnotationShape(
-            "<html><a href='https://github.com/CognitionGuidedSurgery/msml/' target='new'>Welcome to MSML</a>", self,
-            self.graphicsScene)
-        a.setPos(200, 200)
 
-    def _setupMenu(self):
+    def add_annotation_shape(self, text=" "):
+        a = AnnotationShape(text, self, self.graphicsScene)
+        a.setPos(0, 0)
+
+
+    def _setupActions(self):
         self.actionShowEnvEditor = QAction("Edit Environment ...", self)
         self.actionShowSceneEditor = QAction("Edit Scene ...", self)
 
@@ -66,36 +67,44 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionShowEnvEditor.triggered.connect(self.show_env_dialog)
         self.actionShowSceneEditor.triggered.connect(self.show_scene_dialog)
 
-        self.menubar = QtGui.QMenuBar(self)
-
-        ## file
-        self.menuFile = self.menubar.addMenu("File")
-
-        self.actionNew = self.menuFile.addAction(icon("document-new"), "New")
+        self.actionNew = QAction(icon("document-new"), "New", self)
         self.actionNew.setShortcut(QKeySequence.New)
 
-        self.actionOpen = self.menuFile.addAction(icon("document-open"), "Open")
+        self.actionOpen = QAction(icon("document-open"), "Open", self)
         self.actionOpen.setShortcut(QKeySequence.Open)
 
         self.actionOpen.triggered.connect(self.search_open_file)
 
-        self.actionSave = self.menuFile.addAction(icon("document-save"), "Save")
+        self.actionSave = QAction(icon("document-save"), "Save", self)
         self.actionSave.setShortcut(QKeySequence.Save)
 
-        self.actionSaveAs = self.menuFile.addAction(icon("document-save-as"), "Save as...")
+        self.actionSaveAs = QAction(icon("document-save-as"), "Save as...", self)
         self.actionSaveAs.setShortcut(QKeySequence.SaveAs)
 
-        self.menuFile.addSeparator()
+        self.actionClose = QAction(icon("document-close"), "Close", self)
+        self.actionClose.setShortcut(QKeySequence("Alt-F4"))
 
-        self.actionClose = self.menuFile.addAction(icon("document-close"), "Close")
-        self.actionClose.setShortcut(QKeySequence("Ctrl-F4"))
+        self.actionRun = QAction(icon("format-text-bold"), "Execute...", self)
+        self.actionRunCloud = QAction(icon("format-text-italic"), "Execute in Cloud...", self)
+        self.actionAddAnnotation = QAction(icon("address-book-new"), "Add Annotation", self)
+        self.actionAddAnnotation.triggered.connect(self.add_annotation_shape)
+
+    def _setupMenu(self):
+
+        self.menubar = QtGui.QMenuBar(self)
+        self.menuFile = self.menubar.addMenu("File")
+
+        self.menuFile.addAction(self.actionOpen)
+        self.menuFile.addAction(self.actionSave)
+        self.menuFile.addAction(self.actionSaveAs)
+        self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionClose)
+
 
         #Tools
         self.menuTools = self.menubar.addMenu("Tools")
-
-        self.actionRun = self.menuTools.addAction(icon("format-text-bold"), "Execute...")
-        self.actionRun = self.menuTools.addAction(icon("format-text-italic"), "Execute in Cloud...")
-
+        self.menuTools.addAction(self.actionRun)
+        self.menuTools.addAction(self.actionRunCloud)
         self.menuTools.addAction(self.actionAddAnnotation)
 
 
@@ -203,8 +212,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.setDockOptions(
             QtGui.QMainWindow.AllowNestedDocks | QtGui.QMainWindow.AllowTabbedDocks | QtGui.QMainWindow.AnimatedDocks)
 
-        self.actionAddAnnotation = QAction(icon("address-book-new"), "Add Annotation", self)
-
+        self._setupActions()
 
         ## centeral widget
         self._setupCentralWidget()
