@@ -48,6 +48,8 @@ class MSMLMainFrame(QtGui.QMainWindow):
 
 
         self.last_path = path("~").expanduser()  #TODO init by config
+        self.last_save_path = None
+
         self.env_dialog = EnvEditor(self)
         self.scene_dialog = SceneEditor(self)
 
@@ -56,6 +58,28 @@ class MSMLMainFrame(QtGui.QMainWindow):
         a = AnnotationShape(text, self, self.graphicsScene)
         a.setPos(0, 0)
 
+    def save_file(self):
+        if self.last_save_path is None:
+            self.save_file_as()
+
+        from msmlgui.helper.writer import to_xml, save_xml
+
+        xml = to_xml(self.msml_model)
+        save_xml(self.last_save_path, xml)
+
+
+    def save_file_as(self):
+        MSML_FILE_FILTER = "MSML (*.xml *.msml *.msml.xml);; All types (*.*)"
+
+        last_dir = ""
+        if self.last_save_path:
+            last_dir = self.last_save_path.dirname()
+
+        filename = QFileDialog.getSaveFileName(self, "Open MSML file", last_dir, MSML_FILE_FILTER)
+
+        if filename:
+            self.last_save_path = path(filename)
+            self.save_file()
 
     def _setupActions(self):
         self.actionShowEnvEditor = QAction("Edit Environment ...", self)
@@ -77,9 +101,11 @@ class MSMLMainFrame(QtGui.QMainWindow):
 
         self.actionSave = QAction(icon("document-save"), "Save", self)
         self.actionSave.setShortcut(QKeySequence.Save)
+        self.actionSave.triggered.connect(self.save_file)
 
         self.actionSaveAs = QAction(icon("document-save-as"), "Save as...", self)
         self.actionSaveAs.setShortcut(QKeySequence.SaveAs)
+        self.actionSaveAs.triggered.connect(self.save_file_as)
 
         self.actionClose = QAction(icon("document-close"), "Close", self)
         self.actionClose.setShortcut(QKeySequence("Alt-F4"))
@@ -259,71 +285,23 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.msml_vdata.task_map[task] = shape
         self.msml_vdata.task_map[shape] = task
 
-    def set_task_active_propertyeditor(self, task):
-        model = PropertyOperatorModel(task, self.tabProperties)
-        self.tabProperties.setModel(model)
+    def set_property_model(self, item):
+        try:
+            self.tabProperties.setModel(item.get_properties())
+        except:
+            pass
 
     def show_in_operator_help(self, operator):
         html = tpl_operator_help(o=operator)
         self.webOperatorHelp.setHtml(html)
 
     def show_env_dialog(self, *args):
+        self.env_dialog.model = self.msml_model.env
         self.env_dialog.open()
 
     def show_scene_dialog(self, *args):
         self.scene_dialog.model = self.msml_model
         self.scene_dialog.open()
-
-
-class PropertyOperatorModel(QAbstractTableModel):
-    def __init__(self, task, parent=None):
-        QAbstractTableModel.__init__(self)
-        assert isinstance(task.operator, msml.model.Operator)
-
-        self.task = task
-        self.keys = list(task.operator.parameters.keys())
-        self.keys.sort()
-        self.operator = task.operator
-
-    def rowCount(self, parent=QModelIndex()):
-        return len(self.operator.parameters)
-
-    def columnCount(self, parent=QModelIndex()):
-        return 2
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
-            return QVariant()
-        if orientation == Qt.Horizontal:
-            a = ["parameter", "value"]
-            return a[section]
-        else:
-            return QVariant()
-
-    def data(self, index, role=Qt.DisplayRole):
-        #ToolTipRole, DecorationRole
-        if role == Qt.DisplayRole:
-            i = index.row()
-            j = index.column()
-
-            k = self.keys[i]
-
-            if j == 0:
-                return self.operator.parameters[k].name
-            else:
-                try:
-                    return self.task.attributes[k]
-                except:
-                    pass
-                    #        print role
-        return QVariant()
-
-    def flags(self, index):
-        f = QAbstractTableModel.flags(self, index)
-        if index.column == 1:
-            return f | Qt.ItemIsEditable | Qt.ItemIsEnabled
-        else:
-            return f
 
 
 class OperatorListModel(QtCore.QAbstractListModel):

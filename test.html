@@ -1,0 +1,156 @@
+<html>
+<head>
+    <style>
+        .environment_begin,
+        .variables_begin,
+        .workflow_begin,
+        .environment_simulation_begin {
+            display: none;
+        }
+
+        table {
+            with: 100%
+        }
+
+        table:nth-child(odd) {
+            backround: #424;
+        }
+
+        h1, h2, h3, h4 {
+            background: #ccc;
+            padding: 0.2em;
+            margin: 0;
+        }
+
+        table:nth-child(even) {
+            backround: #424;
+        }
+
+        th {
+            text-align: right;
+            width: 30%;
+            border-right: 1px dashed black;
+            padding: 1em;
+        }
+
+        div {
+            margin-left: 1.5em;
+            border-left: 2px solid black;
+            border-top: 1px solid black;
+            border-bottom: 1px solid black;
+        }
+
+    </style>
+<body>
+<div class='variables_begin'><h3>variables</h3></div>
+<div class='workflow_begin'><h3>workflow</h3></div>
+<div class='environment_begin'><h3>environment</h3>
+
+    <div class='environment_simulation_begin'><h3>simulation</h3></div>
+</div>
+<div class="scene"><h1>Scene</h1>
+
+    <div class="object"><h2>Object: bunny</h2>
+
+        <div class="mesh"><h3>Mesh</h3>
+            <table>
+                <tr>
+                    <th>Id</th>
+                    <td>bunnyMesh</td>
+                </tr>
+                <tr>
+                    <th>Mesh</th>
+                    <td>${bunnyVolumeMesher}</td>
+                </tr>
+                <tr>
+                    <th>Type</th>
+                    <td>linearTet</td>
+                </tr>
+            </table>
+            <div class='object_material_begin'><h3>material</h3>
+
+                <div class='object_material_region_begin'><h3>region</h3>
+
+                    <div class="element"><h4>indexgroup</h4>
+                        <table>
+                            <tr>
+                                <th>indices</th>
+                                <td>${bodyToIndexGroup}</td>
+                            </tr>
+                            <tr>
+                                <th>__tag__</th>
+                                <td>indexgroup</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="element"><h4>linearElastic</h4>
+                        <table>
+                            <tr>
+                                <th>__tag__</th>
+                                <td>linearElastic</td>
+                            </tr>
+                            <tr>
+                                <th>poissonRatio</th>
+                                <td>0.49</td>
+                            </tr>
+                            <tr>
+                                <th>youngModulus</th>
+                                <td>80000</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="element"><h4>mass</h4>
+                        <table>
+                            <tr>
+                                <th>__tag__</th>
+                                <td>mass</td>
+                            </tr>
+                            <tr>
+                                <th>density</th>
+                                <td>1000</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class='object_constraints_begin'><h3>constraints</h3>
+
+                <div class='object_constraint_begin'><h3>constraint</h3>
+
+                    <div class="element"><h4>fixedConstraint</h4>
+                        <table>
+                            <tr>
+                                <th>indices</th>
+                                <td>${bottomToIndexGroup}</td>
+                            </tr>
+                            <tr>
+                                <th>__tag__</th>
+                                <td>fixedConstraint</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class='object_output_begin'><h3>output</h3>
+
+                <div class="element"><h4>displacement</h4>
+                    <table>
+                        <tr>
+                            <th>timestep</th>
+                            <td>1</td>
+                        </tr>
+                        <tr>
+                            <th>__tag__</th>
+                            <td>displacement</td>
+                        </tr>
+                        <tr>
+                            <th>id</th>
+                            <td>liver</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

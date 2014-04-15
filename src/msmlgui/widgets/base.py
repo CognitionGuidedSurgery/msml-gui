@@ -54,9 +54,8 @@ class MSMLGraphicsView(QGraphicsView):
         import msmlgui.shared, msml.exporter
         from msml.run import DefaultGraphBuilder
 
-
         m = self.mainframe.msml_model
-        e = msml.exporter.get_exporter("nsofa")(m)  # TODO use shared.msml_app
+        e = msml.exporter.get_exporter("nsofa")(m)  # TODO use shared.msml_app for getting exporter
         m.exporter = e
         m.validate()
 
@@ -81,7 +80,7 @@ class MSMLGraphicsView(QGraphicsView):
                 shape = VariableShape(var, self.mainframe)
                 self.mainframe.msml_vdata.var_map[shape] = var
                 self.mainframe.msml_vdata.var_map[var] = shape
-                self.scene().addItem(shape)
+                scene.addItem(shape)
 
         # add links
         for x, y in dag.edges_iter():
@@ -106,10 +105,8 @@ class MSMLGraphicsView(QGraphicsView):
 
             if isinstance(x, msml.model.MSMLVariable) and isinstance(y, msml.model.Task):
                 if sb in y.operator.parameter_names():
-                    self.scene().removeItem(a)
+                    scene.removeItem(a)
                     continue
-                else:
-                    self.scene().addItem(a)
 
             cnnctd = GraphicsTaskArrowItem(a, sa, b, sb)
             scene.addItem(cnnctd)
@@ -180,7 +177,6 @@ class MSMLGraphicsScene(QGraphicsScene):
         painter.drawLines(lines)
         painter.restore()
 
-
     def get_task_shape(self, point):
         item = self.itemAt(point)
         while item:
@@ -193,7 +189,7 @@ class MSMLGraphicsScene(QGraphicsScene):
     def mousePressEvent(self, event):
         assert isinstance(event, QGraphicsSceneMouseEvent)
 
-        if event.modifiers() & Qt.CTRL:
+        if event.modifiers() & Qt.AltModifier:
             point = event.scenePos()
             item = self.get_task_shape(point)
             if item:
@@ -253,10 +249,26 @@ class MSMLGraphicsScene(QGraphicsScene):
 
     def keyPressEvent(self, event):
         assert isinstance(event, QKeyEvent)
-        print 'KeyEvent %s' % event.key()
         if event.key() == 16777223:
             items = self.selectedItems()
-            for i in items: self.removeItem(i)
+            for i in items:
+                self.removeItemSafely(i)
+
+    def removeItemSafely(self, item):
+        def remove_links(item):
+            scene_items = self.items()
+            for i in scene_items:
+                if isinstance(i, GraphicsTaskArrowItem):
+                    if item in (i.taskA, i.taskB):
+                        self.removeItem(i)
+
+        if isinstance(item, TaskShape) or isinstance(item, VariableShape):
+            self.removeItem(item)
+            remove_links(item)
+        elif isinstance(item, SceneShape):
+            print("SceneShape is not removeable")
+        else:
+            self.removeItem(item)
 
     def onItemSelected(self):
         try:
@@ -266,7 +278,7 @@ class MSMLGraphicsScene(QGraphicsScene):
             self.mainframe.webOperatorHelp.setHtml(html)
 
             if isinstance(item, TaskShape):
-                self.mainframe.set_task_active_propertyeditor(item.task)
+                self.mainframe.set_property_model(item)
 
         except IndexError as e:
             pass
