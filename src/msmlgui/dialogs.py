@@ -98,7 +98,7 @@ class SceneEditor(QDialog):
 
     @pyqtSlot(str)
     def on_mesh_change(self, val):
-        if self.current_scene_object:
+        if self.current_scene_object and isinstance(val, str):
             self.current_scene_object.mesh.mesh = val
             # TODO specify type
 
@@ -124,22 +124,25 @@ class SceneEditor(QDialog):
 
     @pyqtSlot(int)
     def on_material_region_change(self, index):
-        if self.current_scene_object:
+        if self.current_scene_object and index >= 0:
             region = self.cboMaterialRegion.itemData(index).toPyObject()
-            #assert isinstance(self.tabMaterialRegionElementAttributes, QTreeWidget)
-            #self.tabMaterialRegionElementAttributesModel = MaterialRegionElementsModel(self.model, self.current_scene_object, mat, self)
-            #self.tabMaterialRegionElementAttributes.setModel(self.tabMaterialRegionElementAttributesModel)
-
             self.tabMaterialRegionElementAttributes.clear()
-            for mat in region:
-                self.append_material_region_entry(mat)
+            if region:
+                for mat in region:
+                    self.append_material_region_entry(mat)
 
 
     def append_material_region_entry(self, entry):
         "appends and ObjectElement entry in the current tabMaterialRegionElementAttributes TreeWidget"
 
+        entry.bind()
+
         meta = entry.meta
         values = entry.attributes
+
+        if not meta:
+            print "No meta for: %s" % entry.tag
+            return
 
         root = QTreeWidgetItem([meta.name, meta.description], ELEMENT_TYPE)
         b = QBrush(Qt.lightGray)
@@ -211,16 +214,19 @@ class SceneEditor(QDialog):
         self.txtName.setText(sceneobj.id)
 
         # mesm model
+
         self.cboMeshModel = MeshModel(self._model, self)
         self.cboMesh.setModel(self.cboMeshModel)
-
         self.cboMesh.setCurrentIndex(self.cboMeshModel.lookafter(sceneobj.mesh.mesh))
 
         #self.cboMaterialRegionModel = MaterialRegionModel(self.model, self.current_scene_object, self)
         #self.cboMaterialRegion.setModel(self.cboMaterialRegionModel)
         self.cboMaterialRegion.clear()
         for region in self.current_scene_object.material:
-            self.cboMaterialRegion.addItem(region.name, region)
+            assert isinstance(region, MaterialRegion)
+            self.cboMaterialRegion.addItem(region.id, region)
+        self.cboMaterialRegion.setCurrentIndex(0)
+
 
         ## constraints
         def find_cset(step):
@@ -273,14 +279,14 @@ class SceneEditor(QDialog):
         pass
 
     def append_constraint_set(self, cset):
-        root = self.constraints_treewidgets[cset.for_step]
+        root = self.constraints_treewidgets[cset.for_step.strip('${}')]
         assert isinstance(cset, ObjectConstraints)
         for c in cset.constraints:
             self.append_constraint(c, root)
 
     def append_constraint(self, c, root):
         assert isinstance(c, ObjectElement)
-
+        c.bind()
         v = QTreeWidgetItem(6)
         v.setData(0, Qt.DisplayRole, c.meta.name)
         v.setData(1, Qt.DisplayRole, c.meta.description)
@@ -326,6 +332,7 @@ class SceneEditor(QDialog):
         self._model = model  #TODO Working Copy
         self.listSceneModel = SceneObjectModel(model)
         self.listScene.setModel(self.listSceneModel)
+        self.listScene.setCurrentIndex(self.listSceneModel.index(0, 0))
 
 
 class NoEditDelegate(QStyledItemDelegate):
@@ -369,15 +376,21 @@ class MeshModel(QStringListModel):
         self.setStringList(self.list)
 
     def lookafter(self, value):
-        if value in self.values:
-            return self.values.index(value)
-        elif value:
+        value = value.strip("${}")
+
+        for i, v in enumerate(self.values):
+            if v == value:
+                return i
+            if v.startswith("%s." % value):
+                return i
+
+        if value:
             self.values.append(value)
             self.list << value
             self.setStringList(list)
             return len(self.list) - 1
-        else:
-            return -1
+
+        return -1
 
 
 class MaterialRegionModel(QAbstractListModel):
@@ -643,9 +656,7 @@ import msml.env
 import msml.frontend
 
 if __name__ == "__main__":
-    msml.env.load_user_file()
-    msml.env.current_alphabet = msml.frontend.alphabet(
-        {'<paths>': [], 'alphabet': 'a', '--xsd-file': False, '-S': True})
+    app = msml.frontend.App()
 
     import msmlgui.rcc
 

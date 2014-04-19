@@ -395,6 +395,8 @@ class TaskPropertyTableModel(QAbstractTableModel):
 
                     if isinstance(value, msml.model.Constant):
                         return QVariant(value.value)
+                    elif isinstance(value, msml.model.Reference):
+                        return QVariant("${%s.%s}" % (value.task, value.slot))
                     else:
                         return str(value)
 

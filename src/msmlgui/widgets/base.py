@@ -105,8 +105,9 @@ class MSMLGraphicsView(QGraphicsView):
 
             if isinstance(x, msml.model.MSMLVariable) and isinstance(y, msml.model.Task):
                 if sb in y.operator.parameter_names():
-                    scene.removeItem(a)
-                    continue
+                    pass
+                    #scene.removeItem(a)
+                    #continue
 
             cnnctd = GraphicsTaskArrowItem(a, sa, b, sb)
             scene.addItem(cnnctd)

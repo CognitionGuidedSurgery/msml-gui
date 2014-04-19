@@ -189,6 +189,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.dockParameters = QDockWidget("Parameters", self)
         self.dockParameters.setFloating(False)
         self.tabProperties = QtGui.QTableView(self.dockParameters)
+        self.tabProperties.horizontalHeader().setStretchLastSection(True)
         self.dockParameters.setWidget(self.tabProperties)
         self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockParameters)
 
@@ -211,17 +212,18 @@ class MSMLMainFrame(QtGui.QMainWindow):
         buttons = QWidget(widget)
         blayout = QBoxLayout(QBoxLayout.LeftToRight, buttons)
 
-        self.actionAddVariable = QAction(icon('folder-new'), "add", self)
-        self.actionDeleteVariable = QAction(icon('edit-cut'), "delete", self)
+        self.actionAddVariable = QAction(icon('list-add'), "add", self)
+        self.actionDeleteVariable = QAction(icon('list-remove'), "delete", self)
 
-        blayout.addSpacing(10)
+        self.actionAddVariable.triggered.connect(self.add_variable)
+        self.actionDeleteVariable.triggered.connect(self.delete_variable)
 
         btn1 = QToolButton(self)
         btn1.setDefaultAction(self.actionDeleteVariable)
         btn2 = QToolButton(self)
         btn2.setDefaultAction(self.actionAddVariable)
 
-        blayout.addSpacing(20)
+        blayout.addStretch()
         blayout.addWidget(btn1)
         blayout.addWidget(btn2)
 
@@ -230,6 +232,11 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.dockVariables.setWidget(widget)
         self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockVariables)
 
+    def add_variable(self):
+        pass
+
+    def delete_variable(self):
+        pass
 
     def setupUi(self):
         self.setObjectName(_fromUtf8("MainWindow"))
@@ -252,6 +259,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self._setupToolBar()
 
         QtCore.QMetaObject.connectSlotsByName(self)
+        self.readSettings()
 
     def open_file(self, filename):
         try:
@@ -259,9 +267,21 @@ class MSMLMainFrame(QtGui.QMainWindow):
             self.msml_pdata = UiPersistentData.load_from_msml(filename)
             self.msml_model = msml.xml.load_msml_file(filename)
             self.graphicsScene = self.graphicsView.renew()
+            self.tableVariablesModel = VariablesListModel(self.msml_model, self.tableVariables)
+            self.tableVariables.setModel(self.tableVariablesModel)
         except IndexError as e:
             raise e
 
+    def closeEvent(self, event=QCloseEvent()):
+        settings = QSettings("CoginitionGuidedSurgery", "msml-gui")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+        QMainWindow.closeEvent(self, event)
+
+    def readSettings(self):
+        settings = QSettings("CoginitionGuidedSurgery", "msml-gui")
+        self.restoreGeometry(settings.value("geometry").toByteArray())
+        self.restoreState(settings.value("windowState").toByteArray())
 
     def search_open_file(self):
         MSML_FILE_FILTER = "MSML (*.xml *.msml *.msml.xml);; All types (*.*)"
@@ -323,3 +343,69 @@ class OperatorListModel(QtCore.QAbstractListModel):
             if role == Qt.UserRole:
                 return op
         return QVariant()
+
+
+class PythonListTableModel(QAbstractTableModel):
+    def __init__(self, data, headers,
+                 default_fn=lambda x: x,
+                 factory=object, parent=None):
+
+        QAbstractTableModel.__init__(self, parent)
+        self.data = data
+
+        self.factory = factory
+        self.headers = headers
+        self.getter_display = [default_fn] * len(headers)
+
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.data)
+
+    def columnCount(self, parent=QModelIndex()):
+        return len(self.headers)
+
+    def headerData(self, p, o=Qt.Horizontal, role=Qt.DisplayRole):
+        if o == Qt.Horizontal and role == Qt.DisplayRole:
+            return QVariant(self.headers[p])
+        return QVariant()
+
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            obj = self.data[index.row()]
+            if role == Qt.DisplayRole:
+                g = self.getter_display[index.column()]
+                return QVariant(g(obj))
+            if role == Qt.UserRole:
+                g = self.getter_display[index.column()]
+                return g(obj)
+        return QVariant()
+
+    def append(self, obj=None):
+        if not obj:
+            obj = self.factory()
+
+        self.data.append(obj)
+        idx = self.index(len(self.data), len(self.data), QModelIndex())
+        self.rowsInserted.emit(idx, idx)
+
+    def remove(self, idx):
+        if type(idx) is not int:
+            idx = self.data.find(idx)
+
+        del self.data[idx]
+        index = self.index(idx, idx, QModelIndex())
+        self.rowsRemoved.emit(index, index)
+
+
+class VariablesListModel(PythonListTableModel):
+    def __init__(self, msml_file, parent=None):
+        PythonListTableModel.__init__(self, msml_file.variables.values(),
+                                      ["Name", "Value", "Type", "Format"], factory=MSMLVariable, parent=parent)
+
+        from operator import attrgetter
+
+        self.getter_display[0] = attrgetter('name')
+        self.getter_display[1] = attrgetter('value')
+        self.getter_display[2] = attrgetter('type')
+        self.getter_display[3] = attrgetter('format')
