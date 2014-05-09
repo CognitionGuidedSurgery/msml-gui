@@ -36,9 +36,12 @@ class App(object):
 
         from path import path
 
-        f = path("/home/weigl/workspace/msml/examples/PythonExamples/color-example.xml")
-        #frame.open_file(f)
-
+        f = path("/home/weigl/workspace/msml/examples/BunnyExample/bunny.msml.xml")
+        frame.open_file(f)
         frame.show()
+        #    frame.save_file_as()
+
+        #   from .helper.scene_text import scene_to_text
+        #    print scene_to_text(frame.msml_model)
         sys.exit(app.exec_())
 

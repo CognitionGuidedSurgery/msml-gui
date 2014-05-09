@@ -48,15 +48,40 @@ class MSMLMainFrame(QtGui.QMainWindow):
 
 
         self.last_path = path("~").expanduser()  #TODO init by config
+        self.last_save_path = None
+
         self.env_dialog = EnvEditor(self)
         self.scene_dialog = SceneEditor(self)
 
-        a = AnnotationShape(
-            "<html><a href='https://github.com/CognitionGuidedSurgery/msml/' target='new'>Welcome to MSML</a>", self,
-            self.graphicsScene)
-        a.setPos(200, 200)
 
-    def _setupMenu(self):
+    def add_annotation_shape(self, text=" "):
+        a = AnnotationShape(text, self, self.graphicsScene)
+        a.setPos(0, 0)
+
+    def save_file(self):
+        if self.last_save_path is None:
+            self.save_file_as()
+
+        from msmlgui.helper.writer import to_xml, save_xml
+
+        xml = to_xml(self.msml_model)
+        save_xml(self.last_save_path, xml)
+
+
+    def save_file_as(self):
+        MSML_FILE_FILTER = "MSML (*.xml *.msml *.msml.xml);; All types (*.*)"
+
+        last_dir = ""
+        if self.last_save_path:
+            last_dir = self.last_save_path.dirname()
+
+        filename = QFileDialog.getSaveFileName(self, "Open MSML file", last_dir, MSML_FILE_FILTER)
+
+        if filename:
+            self.last_save_path = path(filename)
+            self.save_file()
+
+    def _setupActions(self):
         self.actionShowEnvEditor = QAction("Edit Environment ...", self)
         self.actionShowSceneEditor = QAction("Edit Scene ...", self)
 
@@ -66,36 +91,46 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.actionShowEnvEditor.triggered.connect(self.show_env_dialog)
         self.actionShowSceneEditor.triggered.connect(self.show_scene_dialog)
 
-        self.menubar = QtGui.QMenuBar(self)
-
-        ## file
-        self.menuFile = self.menubar.addMenu("File")
-
-        self.actionNew = self.menuFile.addAction(icon("document-new"), "New")
+        self.actionNew = QAction(icon("document-new"), "New", self)
         self.actionNew.setShortcut(QKeySequence.New)
 
-        self.actionOpen = self.menuFile.addAction(icon("document-open"), "Open")
+        self.actionOpen = QAction(icon("document-open"), "Open", self)
         self.actionOpen.setShortcut(QKeySequence.Open)
 
         self.actionOpen.triggered.connect(self.search_open_file)
 
-        self.actionSave = self.menuFile.addAction(icon("document-save"), "Save")
+        self.actionSave = QAction(icon("document-save"), "Save", self)
         self.actionSave.setShortcut(QKeySequence.Save)
+        self.actionSave.triggered.connect(self.save_file)
 
-        self.actionSaveAs = self.menuFile.addAction(icon("document-save-as"), "Save as...")
+        self.actionSaveAs = QAction(icon("document-save-as"), "Save as...", self)
         self.actionSaveAs.setShortcut(QKeySequence.SaveAs)
+        self.actionSaveAs.triggered.connect(self.save_file_as)
 
+        self.actionClose = QAction(icon("document-close"), "Close", self)
+        self.actionClose.setShortcut(QKeySequence("Alt-F4"))
+
+        self.actionRun = QAction(icon("format-text-bold"), "Execute...", self)
+        self.actionRunCloud = QAction(icon("format-text-italic"), "Execute in Cloud...", self)
+        self.actionAddAnnotation = QAction(icon("address-book-new"), "Add Annotation", self)
+        self.actionAddAnnotation.triggered.connect(self.add_annotation_shape)
+
+    def _setupMenu(self):
+
+        self.menubar = QtGui.QMenuBar(self)
+        self.menuFile = self.menubar.addMenu("File")
+
+        self.menuFile.addAction(self.actionOpen)
+        self.menuFile.addAction(self.actionSave)
+        self.menuFile.addAction(self.actionSaveAs)
         self.menuFile.addSeparator()
+        self.menuFile.addAction(self.actionClose)
 
-        self.actionClose = self.menuFile.addAction(icon("document-close"), "Close")
-        self.actionClose.setShortcut(QKeySequence("Ctrl-F4"))
 
         #Tools
         self.menuTools = self.menubar.addMenu("Tools")
-
-        self.actionRun = self.menuTools.addAction(icon("format-text-bold"), "Execute...")
-        self.actionRun = self.menuTools.addAction(icon("format-text-italic"), "Execute in Cloud...")
-
+        self.menuTools.addAction(self.actionRun)
+        self.menuTools.addAction(self.actionRunCloud)
         self.menuTools.addAction(self.actionAddAnnotation)
 
 
@@ -154,6 +189,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.dockParameters = QDockWidget("Parameters", self)
         self.dockParameters.setFloating(False)
         self.tabProperties = QtGui.QTableView(self.dockParameters)
+        self.tabProperties.horizontalHeader().setStretchLastSection(True)
         self.dockParameters.setWidget(self.tabProperties)
         self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockParameters)
 
@@ -176,17 +212,18 @@ class MSMLMainFrame(QtGui.QMainWindow):
         buttons = QWidget(widget)
         blayout = QBoxLayout(QBoxLayout.LeftToRight, buttons)
 
-        self.actionAddVariable = QAction(icon('folder-new'), "add", self)
-        self.actionDeleteVariable = QAction(icon('edit-cut'), "delete", self)
+        self.actionAddVariable = QAction(icon('list-add'), "add", self)
+        self.actionDeleteVariable = QAction(icon('list-remove'), "delete", self)
 
-        blayout.addSpacing(10)
+        self.actionAddVariable.triggered.connect(self.add_variable)
+        self.actionDeleteVariable.triggered.connect(self.delete_variable)
 
         btn1 = QToolButton(self)
         btn1.setDefaultAction(self.actionDeleteVariable)
         btn2 = QToolButton(self)
         btn2.setDefaultAction(self.actionAddVariable)
 
-        blayout.addSpacing(20)
+        blayout.addStretch()
         blayout.addWidget(btn1)
         blayout.addWidget(btn2)
 
@@ -195,6 +232,11 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.dockVariables.setWidget(widget)
         self.addDockWidget(QtCore.Qt.DockWidgetArea(1), self.dockVariables)
 
+    def add_variable(self):
+        pass
+
+    def delete_variable(self):
+        pass
 
     def setupUi(self):
         self.setObjectName(_fromUtf8("MainWindow"))
@@ -203,8 +245,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.setDockOptions(
             QtGui.QMainWindow.AllowNestedDocks | QtGui.QMainWindow.AllowTabbedDocks | QtGui.QMainWindow.AnimatedDocks)
 
-        self.actionAddAnnotation = QAction(icon("address-book-new"), "Add Annotation", self)
-
+        self._setupActions()
 
         ## centeral widget
         self._setupCentralWidget()
@@ -218,6 +259,7 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self._setupToolBar()
 
         QtCore.QMetaObject.connectSlotsByName(self)
+        self.readSettings()
 
     def open_file(self, filename):
         try:
@@ -225,9 +267,21 @@ class MSMLMainFrame(QtGui.QMainWindow):
             self.msml_pdata = UiPersistentData.load_from_msml(filename)
             self.msml_model = msml.xml.load_msml_file(filename)
             self.graphicsScene = self.graphicsView.renew()
+            self.tableVariablesModel = VariablesListModel(self.msml_model, self.tableVariables)
+            self.tableVariables.setModel(self.tableVariablesModel)
         except IndexError as e:
             raise e
 
+    def closeEvent(self, event=QCloseEvent()):
+        settings = QSettings("CoginitionGuidedSurgery", "msml-gui")
+        settings.setValue("geometry", self.saveGeometry())
+        settings.setValue("windowState", self.saveState())
+        QMainWindow.closeEvent(self, event)
+
+    def readSettings(self):
+        settings = QSettings("CoginitionGuidedSurgery", "msml-gui")
+        self.restoreGeometry(settings.value("geometry").toByteArray())
+        self.restoreState(settings.value("windowState").toByteArray())
 
     def search_open_file(self):
         MSML_FILE_FILTER = "MSML (*.xml *.msml *.msml.xml);; All types (*.*)"
@@ -251,71 +305,23 @@ class MSMLMainFrame(QtGui.QMainWindow):
         self.msml_vdata.task_map[task] = shape
         self.msml_vdata.task_map[shape] = task
 
-    def set_task_active_propertyeditor(self, task):
-        model = PropertyOperatorModel(task, self.tabProperties)
-        self.tabProperties.setModel(model)
+    def set_property_model(self, item):
+        try:
+            self.tabProperties.setModel(item.get_properties())
+        except:
+            pass
 
     def show_in_operator_help(self, operator):
         html = tpl_operator_help(o=operator)
         self.webOperatorHelp.setHtml(html)
 
     def show_env_dialog(self, *args):
+        self.env_dialog.model = self.msml_model.env
         self.env_dialog.open()
 
     def show_scene_dialog(self, *args):
         self.scene_dialog.model = self.msml_model
         self.scene_dialog.open()
-
-
-class PropertyOperatorModel(QAbstractTableModel):
-    def __init__(self, task, parent=None):
-        QAbstractTableModel.__init__(self)
-        assert isinstance(task.operator, msml.model.Operator)
-
-        self.task = task
-        self.keys = list(task.operator.parameters.keys())
-        self.keys.sort()
-        self.operator = task.operator
-
-    def rowCount(self, parent=QModelIndex()):
-        return len(self.operator.parameters)
-
-    def columnCount(self, parent=QModelIndex()):
-        return 2
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
-            return QVariant()
-        if orientation == Qt.Horizontal:
-            a = ["parameter", "value"]
-            return a[section]
-        else:
-            return QVariant()
-
-    def data(self, index, role=Qt.DisplayRole):
-        #ToolTipRole, DecorationRole
-        if role == Qt.DisplayRole:
-            i = index.row()
-            j = index.column()
-
-            k = self.keys[i]
-
-            if j == 0:
-                return self.operator.parameters[k].name
-            else:
-                try:
-                    return self.task.attributes[k]
-                except:
-                    pass
-                    #        print role
-        return QVariant()
-
-    def flags(self, index):
-        f = QAbstractTableModel.flags(self, index)
-        if index.column == 1:
-            return f | Qt.ItemIsEditable | Qt.ItemIsEnabled
-        else:
-            return f
 
 
 class OperatorListModel(QtCore.QAbstractListModel):
@@ -337,3 +343,69 @@ class OperatorListModel(QtCore.QAbstractListModel):
             if role == Qt.UserRole:
                 return op
         return QVariant()
+
+
+class PythonListTableModel(QAbstractTableModel):
+    def __init__(self, data, headers,
+                 default_fn=lambda x: x,
+                 factory=object, parent=None):
+
+        QAbstractTableModel.__init__(self, parent)
+        self.data = data
+
+        self.factory = factory
+        self.headers = headers
+        self.getter_display = [default_fn] * len(headers)
+
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.data)
+
+    def columnCount(self, parent=QModelIndex()):
+        return len(self.headers)
+
+    def headerData(self, p, o=Qt.Horizontal, role=Qt.DisplayRole):
+        if o == Qt.Horizontal and role == Qt.DisplayRole:
+            return QVariant(self.headers[p])
+        return QVariant()
+
+
+    def data(self, index, role=Qt.DisplayRole):
+        if index.isValid():
+            obj = self.data[index.row()]
+            if role == Qt.DisplayRole:
+                g = self.getter_display[index.column()]
+                return QVariant(g(obj))
+            if role == Qt.UserRole:
+                g = self.getter_display[index.column()]
+                return g(obj)
+        return QVariant()
+
+    def append(self, obj=None):
+        if not obj:
+            obj = self.factory()
+
+        self.data.append(obj)
+        idx = self.index(len(self.data), len(self.data), QModelIndex())
+        self.rowsInserted.emit(idx, idx)
+
+    def remove(self, idx):
+        if type(idx) is not int:
+            idx = self.data.find(idx)
+
+        del self.data[idx]
+        index = self.index(idx, idx, QModelIndex())
+        self.rowsRemoved.emit(index, index)
+
+
+class VariablesListModel(PythonListTableModel):
+    def __init__(self, msml_file, parent=None):
+        PythonListTableModel.__init__(self, msml_file.variables.values(),
+                                      ["Name", "Value", "Type", "Format"], factory=MSMLVariable, parent=parent)
+
+        from operator import attrgetter
+
+        self.getter_display[0] = attrgetter('name')
+        self.getter_display[1] = attrgetter('value')
+        self.getter_display[2] = attrgetter('type')
+        self.getter_display[3] = attrgetter('format')

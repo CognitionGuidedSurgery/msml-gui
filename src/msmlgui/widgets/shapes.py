@@ -12,6 +12,11 @@ class HelpItem(object):
         return "No help information"
 
 
+class PropertyItem(object):
+    def get_properties(self):
+        return None
+
+
 class Config(object):
     OUTER_RECT = QRectF(0, 0, 200, 100)
     TEXT_RECT = QRectF(10, 10, 180, 80)
@@ -50,7 +55,6 @@ class SimpleTextRectShape(QGraphicsItemGroup):
         assert isinstance(shape, QGraphicsItem)
         self._docking_ports[name, category] = shape
 
-
     @property
     def text(self):
         return self._text or ""
@@ -66,9 +70,30 @@ class SimpleTextRectShape(QGraphicsItemGroup):
         #self.shape_text.document().setPageSize(QSizeF(self.text_rect.width(), self.text_rect.height()))
         self.shape_text.setTextWidth(self.text_rect.width())
 
+    def boundingRect(self):
+        rect = super(SimpleTextRectShape, self).boundingRect()
+        rect.adjust(-10, -10, 10, 10)
+        return rect
+
+    def paint(self, painter, option, widget=None):
+        assert isinstance(option, QStyleOptionGraphicsItem)
+        assert isinstance(painter, QPainter)
+
+        myoption = QStyleOptionGraphicsItem(option)
+        myoption.state &= ~ QStyle.State_Selected
+
+        super(SimpleTextRectShape, self).paint(painter, myoption, widget)
+
+        if option.state & QStyle.State_Selected:
+            painter.save()
+            painter.setPen(QPen(Qt.red))
+
+            painter.drawRoundedRect(self.boundingRect(), 10, 10)
+            painter.restore()
+
 
 class VariableShape(SimpleTextRectShape, HelpItem):
-    def __init__(self, variable, mainframe, scene):
+    def __init__(self, variable, mainframe, scene=None):
         self.variable = variable
         self.mainframe = mainframe
         SimpleTextRectShape.__init__(self, scene=scene,
@@ -85,7 +110,7 @@ class VariableShape(SimpleTextRectShape, HelpItem):
         return tpl_variable_shape(v=self.variable)
 
 
-class TaskShape(SimpleTextRectShape, HelpItem):
+class TaskShape(SimpleTextRectShape, HelpItem, PropertyItem):
     def __init__(self, task, mainframe, parent=None):
         self.mainframe = mainframe
         self.task = task
@@ -128,6 +153,8 @@ class TaskShape(SimpleTextRectShape, HelpItem):
         add_boxes(self.task.operator.output_names(),
                   "output", x_bottom, y_bottom)
 
+    def get_properties(self):
+        return TaskPropertyTableModel(self.task, self.mainframe)
 
     def get_help(self):
         return tpl_operator_help(o=self.task.operator)
@@ -152,7 +179,9 @@ class SceneShape(SimpleTextRectShape, HelpItem):
         SimpleTextRectShape.__init__(self, scene=parent)
 
     def get_help(self):
-        return tpl_scene_help(scene=self.mainframe.msml_model.scene)
+        from msmlgui.helper.scene_text import scene_to_text
+
+        return scene_to_text(self.mainframe.msml_model)
 
     @property
     def text(self):
@@ -246,12 +275,50 @@ class GraphicsTaskArrowItem(QGraphicsPolygonItem, HelpItem):
 
         self.setFlag(QGraphicsItem.ItemIsSelectable)
         self.setFlag(QGraphicsItem.ItemIsMovable, False)
+        self.setFlag(QGraphicsItem.ItemIsFocusable)
 
 
     def get_help(self):
         return "todo"
 
     def _calc_polygon(self):
+        def find_intersect_point(line, rect):
+            assert isinstance(rect, QRectF)
+            rect_lines = (
+                QLineF(rect.topLeft(), rect.topRight()),
+                QLineF(rect.topRight(), rect.bottomRight()),
+                QLineF(rect.bottomRight(), rect.bottomLeft()),
+                QLineF(rect.bottomLeft(), rect.topLeft()),
+            )
+
+            for r in rect_lines:
+                result = QPointF()
+                if r.intersect(line, result) == 1:
+                    return result
+            return rect.center()
+
+        rectA = self.taskA.dock_point(self.slotA, 'output')
+        rectB = self.taskB.dock_point(self.slotB, 'input')
+
+        rA = self.taskA.mapRectToScene(rectA.boundingRect())
+        rB = self.taskB.mapRectToScene(rectB.boundingRect())
+
+        assert isinstance(rA, QRectF)
+
+        rAc = rA.center()
+        rBc = rB.center()
+
+        line = QLineF(rAc, rBc)
+
+        centerA = find_intersect_point(line, rA)
+        centerB = find_intersect_point(line, rB)
+
+        polygon = QPolygonF()
+        polygon << centerA << centerB
+        self.setPolygon(polygon)
+
+
+    def _calc_polygon_rect(self):
         rectA = self.taskA.dock_point(self.slotA, 'output')
         rectB = self.taskB.dock_point(self.slotB, 'input')
 
@@ -271,10 +338,98 @@ class GraphicsTaskArrowItem(QGraphicsPolygonItem, HelpItem):
     def paint(self, painter, option, widget=None):
         self._calc_polygon()
         #QGraphicsPolygonItem.paint(self, painter, option, widget)
-        painter.drawPolyline(self.polygon())
+
+        if option.state & QStyle.State_Selected:
+            painter.save()
+            pen = QPen(Qt.red)
+            pen.setStyle(Qt.DashLine)
+            pen.setWidthF(pen.widthF() + 2)
+            painter.setPen(pen)
+
+            #painter.drawRoundedRect(self.boundingRect(), 10, 10)
+            painter.drawPolyline(self.polygon())
+
+            painter.restore()
+        else:
+            painter.drawPolyline(self.polygon())
 
 
+class TaskPropertyTableModel(QAbstractTableModel):
+    def __init__(self, task, parent=None):
+        QAbstractTableModel.__init__(self)
+        assert isinstance(task.operator, msml.model.Operator)
 
+        self.task = task
+        self.keys = list(task.operator.parameters.keys())
+        self.keys.sort()
+        self.operator = task.operator
 
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.keys)
 
+    def columnCount(self, parent=QModelIndex()):
+        return 2
 
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role != Qt.DisplayRole:
+            return QVariant()
+        if orientation == Qt.Horizontal:
+            a = ["Parameter", "Value"]
+            return a[section]
+        else:
+            return QVariant()
+
+    def data(self, index, role=Qt.DisplayRole):
+        #ToolTipRole, DecorationRole
+        i = index.row()
+        j = index.column()
+        k = self.keys[i]
+
+        if role == Qt.DisplayRole:
+            if j == 0:
+                return k
+            else:
+                try:
+                    value = self.task.attributes[k]
+                    import msml.model
+
+                    if isinstance(value, msml.model.Constant):
+                        return QVariant(value.value)
+                    elif isinstance(value, msml.model.Reference):
+                        return QVariant("${%s.%s}" % (value.task, value.slot))
+                    else:
+                        return str(value)
+
+                except KeyError as e:
+                    return self.operator.parameters[k].default
+
+        if role == Qt.ToolTip:
+            try:
+                return self.operator.parameters[k].meta['doc']
+            except KeyError as e:
+                pass
+
+        if role == Qt.FontRole:
+            if j == 1 and k not in self.task.attributes:
+                f = QFont()
+                f.setItalic(True)
+                return f
+
+        return QVariant()
+
+    def setData(self, index, variant, role=Qt.DisplayRole):
+        # TODO type check and conversion
+        i = index.row()
+        j = index.column()
+        k = self.keys[i]
+
+        if j == 1:
+            self.task.attributes[k] = variant.toPyObject()
+            self.dataChanged.emit(index, index)
+
+    def flags(self, index):
+        f = QAbstractTableModel.flags(self, index)
+        if index.column() == 1:
+            return f | Qt.ItemIsEditable | Qt.ItemIsEnabled
+        else:
+            return f

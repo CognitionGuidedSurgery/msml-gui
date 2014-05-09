@@ -8,8 +8,8 @@ from path import path
 
 from msml.model import *
 
-PKG_DIR = path(__file__).parent
 
+PKG_DIR = path(__file__).parent
 
 ELEMENT_TYPE = 0x01
 ATTRIBUTE_TYPE = 0x02
@@ -26,10 +26,11 @@ ATTRIBUTE_TYPE = 0x02
 # TODO model for elements
 # TODO model for table of attributes elements
 
-def generate_name(prefix = "task", suffix = ""):
+def generate_name(prefix="task", suffix=""):
     import random
-    chars = [chr(i) for i in range(65, 65+26)]
-    rand =''.join(random.sample(chars, 5))
+
+    chars = [chr(i) for i in range(65, 65 + 26)]
+    rand = ''.join(random.sample(chars, 5))
     return prefix + rand + suffix
 
 
@@ -87,6 +88,7 @@ class SceneEditor(QDialog):
 
     def on_accept(self):
         from yaml import load, dump
+
         try:
             from yaml import CLoader as Loader, CDumper as Dumper
         except ImportError:
@@ -96,7 +98,7 @@ class SceneEditor(QDialog):
 
     @pyqtSlot(str)
     def on_mesh_change(self, val):
-        if self.current_scene_object:
+        if self.current_scene_object and isinstance(val, str):
             self.current_scene_object.mesh.mesh = val
             # TODO specify type
 
@@ -109,9 +111,9 @@ class SceneEditor(QDialog):
             except IndexError as e:
                 pass
 
-#    def on_material_region_element_edit_column(self, item, column):
-#        assert isinstance(item, QTreeWidgetItem)
-#        self.tabMaterialRegionElementAttributes.editItem(item, column)
+                #    def on_material_region_element_edit_column(self, item, column):
+                #        assert isinstance(item, QTreeWidgetItem)
+                #        self.tabMaterialRegionElementAttributes.editItem(item, column)
 
     def on_material_region_element_edit_changed(self, item, column):
         # TODO get
@@ -122,29 +124,30 @@ class SceneEditor(QDialog):
 
     @pyqtSlot(int)
     def on_material_region_change(self, index):
-        if self.current_scene_object:
+        if self.current_scene_object and index >= 0:
             region = self.cboMaterialRegion.itemData(index).toPyObject()
-            #assert isinstance(self.tabMaterialRegionElementAttributes, QTreeWidget)
-            #self.tabMaterialRegionElementAttributesModel = MaterialRegionElementsModel(self.model, self.current_scene_object, mat, self)
-            #self.tabMaterialRegionElementAttributes.setModel(self.tabMaterialRegionElementAttributesModel)
-
             self.tabMaterialRegionElementAttributes.clear()
-            for mat in region:
-                self.append_material_region_entry(mat)
+            if region:
+                for mat in region:
+                    self.append_material_region_entry(mat)
 
 
     def append_material_region_entry(self, entry):
         "appends and ObjectElement entry in the current tabMaterialRegionElementAttributes TreeWidget"
 
+        entry.bind()
 
-        meta   = entry.meta
+        meta = entry.meta
         values = entry.attributes
 
-        root = QTreeWidgetItem([meta.name,meta.description], ELEMENT_TYPE)
+        if not meta:
+            print "No meta for: %s" % entry.tag
+            return
+
+        root = QTreeWidgetItem([meta.name, meta.description], ELEMENT_TYPE)
         b = QBrush(Qt.lightGray)
         root.setData(0, Qt.BackgroundRole, b)
         root.setData(1, Qt.BackgroundRole, b)
-
 
         for name, param in meta.parameters.items():
             item = QTreeWidgetItem(ATTRIBUTE_TYPE)
@@ -164,8 +167,6 @@ class SceneEditor(QDialog):
         root.setExpanded(True)
 
 
-
-
     def on_material_region_add(self):
         if self.current_scene_object:
             mat = MaterialRegion(generate_name('mat_', '_region'))
@@ -177,13 +178,13 @@ class SceneEditor(QDialog):
 
             self.current_scene_object.material.append(mat)
             self.cboMaterialRegion.addItem(mat.id, mat)
-            self.cboMaterialRegion.setCurrentIndex(len(self.current_scene_object.material)-1)
+            self.cboMaterialRegion.setCurrentIndex(len(self.current_scene_object.material) - 1)
 
     def on_material_region_remove(self):
         if self.current_scene_object:
             idx = self.cboMaterialRegion.currentIndex()
             region = self.cboMaterialRegion.itemData(idx).toPyObject()
-            midx  = self.current_scene_object.material.index(region)
+            midx = self.current_scene_object.material.index(region)
             del self.current_scene_object.material[midx]
             self.cboMaterialRegion.removeItem(idx)
 
@@ -200,7 +201,7 @@ class SceneEditor(QDialog):
             self.append_material_region_entry(oe)
 
     def on_listScene_activated(self, index):
-        assert isinstance(index,QModelIndex)
+        assert isinstance(index, QModelIndex)
         sceneobj = self.model.scene[index.row()]
         self.activate_scene_object(sceneobj)
 
@@ -213,16 +214,19 @@ class SceneEditor(QDialog):
         self.txtName.setText(sceneobj.id)
 
         # mesm model
+
         self.cboMeshModel = MeshModel(self._model, self)
         self.cboMesh.setModel(self.cboMeshModel)
-
         self.cboMesh.setCurrentIndex(self.cboMeshModel.lookafter(sceneobj.mesh.mesh))
 
         #self.cboMaterialRegionModel = MaterialRegionModel(self.model, self.current_scene_object, self)
         #self.cboMaterialRegion.setModel(self.cboMaterialRegionModel)
         self.cboMaterialRegion.clear()
         for region in self.current_scene_object.material:
-            self.cboMaterialRegion.addItem(region.name, region)
+            assert isinstance(region, MaterialRegion)
+            self.cboMaterialRegion.addItem(region.id, region)
+        self.cboMaterialRegion.setCurrentIndex(0)
+
 
         ## constraints
         def find_cset(step):
@@ -240,7 +244,7 @@ class SceneEditor(QDialog):
             w = QTreeWidgetItem(5)
 
             w.setData(0, Qt.DisplayRole, step.name)
-            w.setData(1, Qt.DisplayRole, "%d/%d" %(step.dt, step.iterations))
+            w.setData(1, Qt.DisplayRole, "%d/%d" % (step.dt, step.iterations))
             w.setData(0, Qt.BackgroundRole, hbrush)
             w.setData(1, Qt.BackgroundRole, hbrush)
             self.constraints_treewidgets[step.name] = w
@@ -249,7 +253,6 @@ class SceneEditor(QDialog):
             w.setData(0, Qt.UserRole, find_cset(step))
             w.setExpanded(True)
             w.setFirstColumnSpanned(True)
-
 
         for cset in self.current_scene_object.constraints:
             self.append_constraint_set(cset)
@@ -276,14 +279,14 @@ class SceneEditor(QDialog):
         pass
 
     def append_constraint_set(self, cset):
-        root = self.constraints_treewidgets[cset.for_step]
+        root = self.constraints_treewidgets[cset.for_step.strip('${}')]
         assert isinstance(cset, ObjectConstraints)
         for c in cset.constraints:
             self.append_constraint(c, root)
 
     def append_constraint(self, c, root):
         assert isinstance(c, ObjectElement)
-
+        c.bind()
         v = QTreeWidgetItem(6)
         v.setData(0, Qt.DisplayRole, c.meta.name)
         v.setData(1, Qt.DisplayRole, c.meta.description)
@@ -294,13 +297,12 @@ class SceneEditor(QDialog):
             u = QTreeWidgetItem(7)
             v.addChild(u)
 
-            u.setData(0,Qt.DisplayRole, p.name)
-            u.setData(1,Qt.DisplayRole, c.attributes.get(p.name, ""))
-            u.setData(1,Qt.UserRole, (c.attributes, p.name))
+            u.setData(0, Qt.DisplayRole, p.name)
+            u.setData(1, Qt.DisplayRole, c.attributes.get(p.name, ""))
+            u.setData(1, Qt.UserRole, (c.attributes, p.name))
 
             u.setFlags(v.flags() | Qt.ItemIsEditable)
             u.setExpanded(True)
-
 
 
     def remove_scene_object(self):
@@ -310,7 +312,7 @@ class SceneEditor(QDialog):
         del self.model.scene[idx]
 
         i = self.listSceneModel.createIndex(idx, 0)
-        self.listScene.dataChanged(i,i)
+        self.listScene.dataChanged(i, i)
 
     def add_scene_object(self):
         new = SceneObject(generate_name("obj"))
@@ -327,12 +329,14 @@ class SceneEditor(QDialog):
     @model.setter
     def model(self, model):
         assert isinstance(model, MSMLFile)
-        self._model = model #TODO Working Copy
+        self._model = model  #TODO Working Copy
         self.listSceneModel = SceneObjectModel(model)
         self.listScene.setModel(self.listSceneModel)
+        self.listScene.setCurrentIndex(self.listSceneModel.index(0, 0))
+
 
 class NoEditDelegate(QStyledItemDelegate):
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         QStyledItemDelegate.__init__(self, parent)
 
     def createEditor(self, QWidget, QStyleOptionViewItem, QModelIndex):
@@ -346,14 +350,14 @@ class SceneObjectModel(QAbstractListModel):
 
         self.msmlfile = msmlfile
 
-    def data(self, index = QModelIndex(), role = Qt.DisplayRole):
+    def data(self, index=QModelIndex(), role=Qt.DisplayRole):
         if index.isValid() and role == Qt.DisplayRole:
             o = self.msmlfile.scene[index.row()]
             assert isinstance(o, SceneObject)
             return QVariant(o.id)
         return QVariant()
 
-    def rowCount(self, parent  = QModelIndex()):
+    def rowCount(self, parent=QModelIndex()):
         return len(self.msmlfile.scene)
 
 
@@ -372,15 +376,21 @@ class MeshModel(QStringListModel):
         self.setStringList(self.list)
 
     def lookafter(self, value):
-        if value in self.values:
-            return self.values.index(value)
-        elif value:
+        value = value.strip("${}")
+
+        for i, v in enumerate(self.values):
+            if v == value:
+                return i
+            if v.startswith("%s." % value):
+                return i
+
+        if value:
             self.values.append(value)
             self.list << value
             self.setStringList(list)
             return len(self.list) - 1
-        else:
-            return -1
+
+        return -1
 
 
 class MaterialRegionModel(QAbstractListModel):
@@ -392,31 +402,31 @@ class MaterialRegionModel(QAbstractListModel):
         self.msmlfile = msmlfile
         self.msmlobj = msmlobj
 
-    def data(self, index = QModelIndex(), role = Qt.DisplayRole):
+    def data(self, index=QModelIndex(), role=Qt.DisplayRole):
         if index.isValid():
             o = self.msmlobj.material[index.row()]
             return QVariant(o.id)
         return QVariant()
 
-    def rowCount(self, parent  = QModelIndex()):
+    def rowCount(self, parent=QModelIndex()):
         return len(self.msmlobj.material)
 
 
 class MaterialElementsModel(QAbstractListModel):
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         QAbstractListModel.__init__(self, parent)
 
         alphabet = msml.env.current_alphabet
         oattr = alphabet.object_attributes.values()
         self.elements = filter(lambda x: isinstance(x, OAMaterial), oattr)
 
-    def data(self, index = QModelIndex(), role = Qt.DisplayRole):
+    def data(self, index=QModelIndex(), role=Qt.DisplayRole):
         if index.isValid():
             o = self.elements[index.row()]
             return QVariant(o.name)
         return QVariant()
 
-    def rowCount(self, parent  = QModelIndex()):
+    def rowCount(self, parent=QModelIndex()):
         return len(self.elements)
 
 
@@ -429,15 +439,16 @@ class MaterialRegionIndexGroupModel(QStringListModel):
 
         list = QStringList()
 
-        for value in get_output_slots(msmlfile, type = "indexgroup"):
+        for value in get_output_slots(msmlfile, type="indexgroup"):
             list << value
 
         self.setStringList(list)
 
+
 import msml.env
 
-
 import collections
+
 TreeNode = collections.namedtuple("TreeNode", "t,d")
 
 
@@ -548,30 +559,121 @@ class EnvEditor(QDialog):
     def __init__(self, parent=None, flags=0):
         QDialog.__init__(self, parent)
         PyQt4.uic.loadUi(PKG_DIR / "env_editor.ui", self)
+        self.btnAdd.clicked.connect(self.add_step)
+        self.btnRemove.clicked.connect(self.remove_steps)
+        self.tblmodel = SimulationTableModel(list(), self)
+
+    def add_step(self):
+        step = MSMLEnvironment.Simulation.Step()
+        self.tblmodel.simulation.append(step)
+
+        self.tblmodel.rowsInserted.emit(
+            QModelIndex(),
+            len(self.tblmodel.simulation),
+            len(self.tblmodel.simulation))
+
+    def remove_steps(self):
+        idx = self.tableView.getSelectedRows()
+
+    @property
+    def model(self):
+        env = MSMLEnvironment()
+        env.solver.processingUnit = self.cboProcessingUnit.currentIndex()
+        env.solver.timeIntegration = self.cboIntegration.currentIndex()
+        env.solver.linearSolver = self.cboLinearSolver.currentIndex()
+        env.simulation = self.tblmodel.simulation
+        return env
+
+    @model.setter
+    def model(self, env):
+        assert isinstance(env, MSMLEnvironment)
+
+        updatecbo = lambda x, t: x.setCurrentIndex(x.findText(t))
+
+        updatecbo(self.cboProcessingUnit, env.solver.processingUnit)
+        updatecbo(self.cboIntegration, env.solver.timeIntegration)
+        updatecbo(self.cboLinearSolver, env.solver.linearSolver)
+
+        self.tblmodel = SimulationTableModel(list(env.simulation), self)  # TODO deep copy?
+        self.tableView.setModel(self.tblmodel)
+
+
+class SimulationTableModel(QAbstractTableModel):
+    def __init__(self, simulation, parent=None):
+        QAbstractTableModel.__init__(self, parent)
+        self.simulation = simulation
+        self.header = ['Name', 'iterations', 'dt']
+
+    def removeRows(self, row, count, parent=QModelIndex()):
+        self.beginRemoveRows(parent, row, row)
+        del self.simulation[row]
+        self.endRemoveRows(parent, row, row)
+        return True
+
+    def rowCount(self, parent=QModelIndex()):
+        return len(self.simulation)
+
+    def columnCount(self, *args):
+        return 3
+
+    def data(self, index=QModelIndex(), role=Qt.DisplayRole):
+        if index.isValid() and role == Qt.DisplayRole:
+            i = index.row()
+            j = index.column()
+            step = self.simulation[i]
+            return (step.name, step.iterations, step.dt)[j]
+
+    def headerData(self, p, orientation=Qt.Horizontal, role=Qt.DisplayRole):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            return self.header[p]
+
+
+    def flags(self, index=QModelIndex()):
+        if index.isValid():
+            flags = QAbstractTableModel.flags(self, index)
+            flags = flags | Qt.ItemIsEditable
+            return flags
+
+    def setData(self, index, variant, role=Qt.EditRole):
+        if index.isValid():
+            i = index.row()
+            j = index.column()
+            step = self.simulation[i]
+
+            v = variant.toPyObject()
+
+            if j == 0:
+                step.name = v
+            elif j == 1:
+                step.iterations = int(v)
+            elif j == 2:
+                step.dt = float(v)
+
+            self.dataChanged.emit(index, index)
 
 
 import msml.env
 import msml.frontend
+
 if __name__ == "__main__":
-    msml.env.load_user_file()
-    msml.env.current_alphabet = msml.frontend.alphabet({'<paths>':[], 'alphabet': 'a', '--xsd-file':False, '-S': True})
+    app = msml.frontend.App()
 
     import msmlgui.rcc
 
     import sys
+
     app = QApplication(sys.argv)
 
     edit = SceneEditor()
-    model  = MSMLFile()
+    model = MSMLFile()
 
-    t1 = Task("test",{'id':"abc"})
+    t1 = Task("test", {'id': "abc"})
     t1.operator = msml.env.current_alphabet.get('surfaceExtract')
     model.workflow.add_task(t1)
 
     model.env.simulation.add_step("initial", 0.05, 1000)
     model.env.simulation.add_step("first", 0.05, 1000)
     model.env.simulation.add_step("second", 0.05, 1000)
-
 
     edit.model = model
 
