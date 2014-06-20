@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<body>
+<style>
+    dt {
+        font-weight: bold;
+    }
+
+    .doc {
+        font-size: 80%;
+    }
+
+    .missing {
+        color: red;
+    }
+
+    table {
+        width: 100%;
+    }
+
+    td {
+        border: 1;
+        width: 25%;
+    }
+
+    th {
+        text-align: right;
+    }
+</style>
+
+<h1>{{ a.name }}</h1>
+
+
+
+{% if "doc" in a.meta %}
+    <div class="doc">{{ o.meta["doc"] }}</div>
+{% else %}
+    <div class="doc missing">DOCUMENTATION MISSING</div>
+{% endif %}
+
+<hr>
+
+{% macro slot_list(name, slots) %}
+    <h2>{{ name }}</h2>
+
+    <div>
+        <dl>
+            {% for s in slots.values() %}
+                <dt>{{ s.name }}</dt>
+                <dd>
+
+                    {% if 'meta' in s.meta %}
+                        <div class="doc">
+                            {{ s.doc }}
+                        </div>
+                    {% else %}
+                        <div class="doc missing">
+                            DOCUMENTATION MISSING
+                        </div>
+                    {% endif %}
+
+                    <p>
+                        Sort: <em>{{ s.sort }}</em>
+                    </p>
+                </dd>
+            {% endfor %}
+        </dl>
+    </div>
+{% endmacro %}
+
+
+{% macro slot_table(name, slots) %}
+    <h2>{{ name }}</h2>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Sort</th>
+            <th>Format</th>
+            <th>Type</th>
+        </tr>
+        {% for s in slots.values() %}
+            <tr>
+                <td>{{ s.name }}</td>
+                <td>{{ s.sort }}</td>
+                <td>{{ s.format }}</td>
+                <td>{{ s.type }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+{% endmacro %}
+
+</body>
+</html>

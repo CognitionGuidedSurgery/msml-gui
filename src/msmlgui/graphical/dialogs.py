@@ -1,9 +1,10 @@
 __author__ = 'Alexander Weigl'
 __date__ = "2014-03-09"
 
+import PyQt4.uic
+
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
-import PyQt4.uic
 from path import path
 
 from msml.model import *
@@ -87,7 +88,7 @@ class SceneEditor(QDialog):
         self.current_scene_object = None
 
     def on_accept(self):
-        from yaml import load, dump
+        from yaml import dump
 
         try:
             from yaml import CLoader as Loader, CDumper as Dumper
@@ -657,8 +658,6 @@ import msml.frontend
 
 if __name__ == "__main__":
     app = msml.frontend.App()
-
-    import msmlgui.rcc
 
     import sys
 

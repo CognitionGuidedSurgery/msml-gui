@@ -1,8 +1,5 @@
 __author__ = 'weigl'
 
-from PyQt4.QtCore import *
-from PyQt4.QtGui import *
-
 import msml.model
 
 from .shapes import *
@@ -51,7 +48,7 @@ class MSMLGraphicsView(QGraphicsView):
         self.scene_node.setPos(*self.mainframe.msml_pdata.get_task_position(self.scene_node))
         scene.addItem(self.scene_node)
 
-        import msmlgui.shared, msml.exporter
+        import msml.exporter
         from msml.run import DefaultGraphBuilder
 
         m = self.mainframe.msml_model
@@ -91,12 +88,15 @@ class MSMLGraphicsView(QGraphicsView):
                 else:
                     continue
             else:
-                a = self.mainframe.msml_vdata.task_map[x]
+                continue
+                #a = self.mainframe.msml_vdata.task_map[x]
+
 
             if isinstance(y, msml.exporter.Exporter):
                 b = self.scene_node
             else:
-                b = self.mainframe.msml_vdata.task_map[y]
+                continue
+                #b = self.mainframe.msml_vdata.task_map[y]
 
             ref = dag.get_edge_data(x, y)[0]['ref']
 

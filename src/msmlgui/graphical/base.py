@@ -9,7 +9,7 @@ import msml.model
 import msml.xml
 
 from .widgets import *
-from .dialogs import *
+from .msmlgui.graphical.dialogs import *
 from msmlgui import shared
 from msmlgui.helper import *
 

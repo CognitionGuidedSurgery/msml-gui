@@ -1,3 +1,5 @@
+import msmlgui
+
 __author__ = 'weigl'
 
 import json
@@ -17,7 +19,6 @@ class UiPersistentData(object):
         self.annotations = []
 
     def get_task_position(self, task):
-        import msmlgui.widgets
 
         if isinstance(task, msmlgui.widgets.TaskShape):
             task = task.task
