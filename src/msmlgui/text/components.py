@@ -1,16 +1,83 @@
-#-*- encoding: utf-8 -*-
+# -*- encoding: utf-8 -*-
 __author__ = 'weigl'
 
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
+import ply.lex
+
 from .xmllexer import tokenize
 from .highlighter import XMLHighlighter, SOLARIZED_COLORS
 from .flycheck import *
+from .flowlayout import FlowLayout
+
 
 DELAY_SEMANTIC_ANALYZE = 1000
 ADDITIONAL_SPACE = 40
 RIGHT_BORDER_MARGIN = 20
 
+import collections
+
+CompletionEntry = collections.namedtuple("CompletionEntry", "parent text insert")
+
+
+
+class CompletionModel(QAbstractListModel):
+    def __init__(self, parent = None):
+        super(CompletionModel, self).__init__(parent)
+        import msmlgui.shared
+
+        self.entries = []
+
+        self.active_entries = []
+
+        for operator_name in msmlgui.shared.msml_app.alphabet.operators.keys():
+            self.entries.append(CompletionEntry("workflow", operator_name, "<%s id=\"^$\" />"%operator_name))
+
+        for operator in msmlgui.shared.msml_app.alphabet.operators.values():
+            for name in operator.acceptable_names():
+                self.entries.append(CompletionEntry(operator.name+"$", name,
+                                                "%s=\"^%s$\" />"%(name, "type")))
+
+        self.revalidate([])
+
+    def revalidate(self, stack):
+        self.beginResetModel()
+        self.active_entries = []
+
+        tagsInStack = {s.value for s in stack}
+
+        try:
+            topValue =stack[-1].value
+        except:
+            topValue = None
+
+
+        for e in self.entries:
+            if e.parent.endswith('$') and e.parent[:-1] == topValue:
+                self.active_entries.append(e)
+            elif e.parent in tagsInStack:
+                self.active_entries.append(e)
+
+
+        print "Revalidated: ", map(lambda x: x.text, self.active_entries)
+
+        self.endResetModel()
+
+    def data(self, index = QModelIndex(), role=Qt.DisplayRole):
+        if not index.isValid():
+            return
+
+        row = index.row()
+        entry = self.active_entries[row]
+        if role == Qt.DisplayRole:
+            return entry.text
+
+        if role == Qt.UserRole:
+            return entry.insert
+
+
+    def rowCount(self, parent = QModelIndex()):
+        return len(self.active_entries)
 
 class LineNumberArea(QWidget):
     def __init__(self, codeeditor):
@@ -34,9 +101,12 @@ class CodeEditor(QPlainTextEdit):
         self.blockCountChanged.connect(self.updateLineNumberAreaWidth)
         self.updateRequest.connect(self.updateLineNumberArea)
         self.cursorPositionChanged.connect(self.highlightCurrentLine)
+        self.cursorPositionChanged.connect(self.onCursorPositionChanged)
         self.textChanged.connect(self.triggerSemanticAnalyze)
 
         self.updateLineNumberAreaWidth(0)
+
+        self.semantic_enabled = True
 
         self.highlighter = XMLHighlighter(self.document())
 
@@ -54,6 +124,22 @@ class CodeEditor(QPlainTextEdit):
         self.triggerSemanticAnalyze()
 
         self.sections = {}
+
+        ## completer
+
+        self._completer = None
+
+        completer = QCompleter(self)
+        self.completion_model = CompletionModel()
+
+        self.firePositionStackUpdate.connect(self.completion_model.revalidate)
+
+        completer.setModel(self.completion_model)
+        completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
+        completer.setCaseSensitivity(Qt.CaseSensitive)
+        completer.setWrapAround(False)
+        self.setCompleter(completer)
+
 
     def lineNumberAreaPaintEvent(self, event):
         assert isinstance(event, QPaintEvent)
@@ -152,9 +238,14 @@ class CodeEditor(QPlainTextEdit):
         if rect.contains(self.viewport().rect()):
             self.updateLineNumberAreaWidth(0)
 
+    def onCursorPositionChanged(self):
+        text = str(self.toPlainText())
+        tokens = tokenize(text)
+        self.whereIam(tokens)
+
     def triggerSemanticAnalyze(self):
         print "Trigger Semantic Analyze"
-        if self.document().isModified():
+        if self.semantic_enabled:
             self.timer.stop()
             self.timer.start(DELAY_SEMANTIC_ANALYZE)
             self.document().setModified(False)
@@ -162,27 +253,29 @@ class CodeEditor(QPlainTextEdit):
     def runSemanticAnalyze(self):
         print "ANALyze"
 
+        self.semantic_enabled = False
         text = str(self.toPlainText())
         char2line = self.charLine(text)
+
         self.findSections(text, char2line)
         tokens = tokenize(text)
-        self.whereIam(tokens)
         self.findErrorsAndWarnings(tokens)
+        self.contentChanged.emit(tokens, char2line)
+        self.semantic_enabled = True
 
-    def findErrorsAndWarnings(self,toks):
+    def findErrorsAndWarnings(self, toks):
         errors = find_errors(toks)
 
         cursor = self.textCursor();
         errorFormat = self.highlighter.theme['ERROR']
 
         for er in errors:
-            s,e = er.position
+            s, e = er.position
             cursor.setPosition(s)
             cursor.setPosition(e, QTextCursor.KeepAnchor)
             cursor.mergeCharFormat(errorFormat)
 
         self.document().setModified(False)
-
 
     def charLine(self, text):
         d = list()
@@ -213,8 +306,6 @@ class CodeEditor(QPlainTextEdit):
         print self.sections
 
     def whereIam(self, tokens):
-
-
         cursor = self.textCursor().position()
         stack = []
 
@@ -232,46 +323,111 @@ class CodeEditor(QPlainTextEdit):
         self.positionStack = stack
         self.firePositionStackUpdate.emit(self.positionStack)
 
+
+    def setCompleter(self, completer):
+        assert isinstance(completer, QCompleter)
+
+        if self._completer:
+            self._completer.disconnect(self, 0)
+
+        self._completer = completer
+
+        if self._completer:
+            self._completer.setWidget(self)
+            self._completer.activated.connect(self.insertCompletion)
+
+    def completer(self):
+        return self._completer
+
+    def insertCompletion(self, text):
+        if self._completer.widget() == self:
+            text = str(text)
+            tc = self.textCursor()
+            extra = len(text) - len(self._completer.completionPrefix())
+
+            tc.movePosition(QTextCursor.Left)
+            tc.movePosition(QTextCursor.EndOfWord)
+            tc.insertText(text[-extra:])
+            self.setTextCursor(tc)
+
+    def textUnderCursor(self):
+        tc = self.textCursor()
+        tc.select(QTextCursor.WordUnderCursor)
+        return tc.selectedText()
+
+    def focusInEvent(self, event):
+        assert isinstance(event, QFocusEvent)
+
+        if self._completer:
+            self._completer.setWidget(self)
+
+        QPlainTextEdit.focusInEvent(self, event)
+
+    def keyPressEvent(self, event):
+        assert isinstance(event, QKeyEvent)
+
+        if self._completer and self._completer.popup().isVisible():
+            if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Backtab):
+                event.ignore()
+                return
+
+        isShortcut = ((event.modifiers() & Qt.ControlModifier) and event.key() == Qt.Key_E)
+
+        if not self._completer or not isShortcut:  # do not process the shortcut when we have a completer
+            QPlainTextEdit.keyPressEvent(self, event)
+            return
+
+        ctrlOrShift = event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier)
+        if not self._completer or (ctrlOrShift and event.text().isEmpty()):
+            return
+
+        eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="
+        hasModifier = (event.modifiers() != Qt.NoModifier) and not ctrlOrShift
+        completionPrefix = self.textUnderCursor()
+
+        if not isShortcut \
+                and (hasModifier \
+                             or event.text().isEmpty() \
+                             or completionPrefix.length() < 3 \
+                             or eow.contains(event.text().right(1))):
+            self._completer.popup().hide()
+            return
+
+        if completionPrefix != self._completer.completionPrefix():
+            self._completer.setCompletionPrefix(completionPrefix)
+            self._completer.popup().setCurrentIndex(self._completer.completionModel().index(0, 0))
+
+        cr = self.cursorRect()
+        cr.setWidth(self._completer.popup().sizeHintForColumn(0)
+                    + self._completer.popup().verticalScrollBar().sizeHint().width())
+        self._completer.complete(cr);
+
+
     firePositionStackUpdate = pyqtSignal([list])
+    contentChanged = pyqtSignal([list, list])
 
-
-import ply.lex
-
-
-
-from .flowlayout import FlowLayout
 
 class BreadCrump(QWidget):
     def __init__(self, parent=None):
         super(QWidget, self).__init__(parent)
         layout = FlowLayout()
         self.setLayout(layout)
-        self.clear()
+
+        self.label = QLabel("", self)
+        self.layout().addWidget(self.label)
 
     def clear(self):
-        self.layout().itemList =[]
+        self.label.setText("")
 
     def setBreads(self, lis):
         self.clear()
-        for item in lis:
-
-            lbl = QLabel(item[0], self)
-            sep = QLabel(u"▸", self)
-
-            print item
-            self.layout().addWidget(lbl)
-            self.layout().addWidget(sep)
-
-        try:
-            self.layout().itemList.pop()
-        except IndexError: pass
-
-        #self.layout().addStretch()
-        self.repaint()
+        s = u" ▸ ".join(map(operator.itemgetter(0), lis))
+        self.label.setText(s)
 
 
     def positionStackUpdate(self, tokens):
         values = map(operator.attrgetter("value", "lexpos"), tokens)
         self.setBreads(values)
+
 
 import operator

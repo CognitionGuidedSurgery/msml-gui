@@ -6,6 +6,8 @@ from PyQt4.QtGui import *
 from PyQt4.QtCore import *
 import msmlgui.rcc
 
+from .flycheck import build_overview
+
 from .editor_ui import Ui_MainWindow
 from ..help import *
 
@@ -24,6 +26,8 @@ class MainFrame(Ui_MainWindow, QMainWindow):
 
         self.textEditor.firePositionStackUpdate.connect(self.breadcrump.positionStackUpdate)
         self.textEditor.firePositionStackUpdate.connect(self.openHelp)
+
+        self.textEditor.contentChanged.connect(self.updateOverview)
 
         self.open("/org/share/home/weigl/workspace/msml/examples/BunnyExample/bunnyCGAL.msml.xml")
 
@@ -55,6 +59,8 @@ class MainFrame(Ui_MainWindow, QMainWindow):
         self.toolBar.addActions(file)
         self.menuFile.clear()
         self.menuFile.addActions(file)
+
+        self.menuWindow.addAction(self.dockHelp.toggleViewAction())
 
 
     def open_file(self, filename):
@@ -119,6 +125,23 @@ class MainFrame(Ui_MainWindow, QMainWindow):
             else:
                 self.webView.setHtml(c)
         except IndexError: pass
+
+    def updateOverview(self, tokens, char2line):
+        overview = build_overview(tokens)
+
+        self.treeOverview.clear()
+
+        def appendUnder(name, seq):
+            item = QTreeWidgetItem(self.treeOverview)
+            item.setText(0, name)
+            item.addChildren(seq)
+
+
+        appendUnder("Variables", overview.variables)
+        appendUnder("Objects", overview.objects)
+        appendUnder("Tasks", overview.tasks)
+        appendUnder("Environment", overview.environment)
+
 
 
     def open(self, filename):
