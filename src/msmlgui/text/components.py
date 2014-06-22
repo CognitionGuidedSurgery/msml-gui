@@ -15,14 +15,63 @@ DELAY_SEMANTIC_ANALYZE = 1000
 ADDITIONAL_SPACE = 40
 RIGHT_BORDER_MARGIN = 20
 
-import collections
 
-CompletionEntry = collections.namedtuple("CompletionEntry", "parent text insert")
+class Memoize(object):
+    def __init__(self, f):
+        self.f = f
+        self.memo = {}
 
+    def __call__(self, *args):
+        if not args in self.memo:
+            self.memo[args] = self.f(*args)
+        return self.memo[args]
+
+
+@Memoize
+def create_round_icon(char, color=Qt.white):
+    SIZE = 16
+    pixmap = QPixmap(SIZE, SIZE)
+
+    whole_rect = QRectF(0, 0, SIZE, SIZE)
+    rect = QRectF(1, 1, SIZE - 2, SIZE - 2)
+
+    painter = QPainter(pixmap)
+    painter.begin(pixmap)
+
+    painter.fillRect(whole_rect, Qt.white)
+
+    painter.setBrush(QColor(color))
+    flags = Qt.TextSingleLine | Qt.AlignCenter | Qt.AlignHCenter
+    painter.drawEllipse(rect)
+
+    painter.setPen(QPen(Qt.white))
+    painter.drawText(rect, flags, char)
+
+    painter.end()
+
+    #writer = QImageWriter(char + "_test.bmp", "bmp")
+    #writer.write(pixmap.toImage())
+    return pixmap
+
+
+class CompletionEntry(object):
+    def __init__(self, text="n/a", insert=None, anchestor=True, parent=True, foreground=None, background=None,
+                 icon=None, order=-1):
+        self.anchestor = anchestor
+        self.parent = parent
+        self.text = text
+        self.insert = insert if insert else text
+        self.foreground = foreground
+        self.background = background
+        self.icon = icon
+        self.order = order
+
+    def __cmp__(self, other):
+        return self.order - other.order
 
 
 class CompletionModel(QAbstractListModel):
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         super(CompletionModel, self).__init__(parent)
         import msmlgui.shared
 
@@ -30,15 +79,26 @@ class CompletionModel(QAbstractListModel):
 
         self.active_entries = []
 
+        operator_icon = create_round_icon("o", Qt.darkBlue)
+        attribute_icon = create_round_icon("a", Qt.darkGreen)
+
         for operator_name in msmlgui.shared.msml_app.alphabet.operators.keys():
-            self.entries.append(CompletionEntry("workflow", operator_name, "<%s id=\"^$\" />"%operator_name))
+            self.append(operator_name,
+                        insert="<%s id=\"$\" />" % operator_name,
+                        anchestor="workflow",
+                        icon=operator_icon)
 
         for operator in msmlgui.shared.msml_app.alphabet.operators.values():
             for name in operator.acceptable_names():
-                self.entries.append(CompletionEntry(operator.name+"$", name,
-                                                "%s=\"^%s$\" />"%(name, "type")))
+                self.append(parent=operator.name,
+                            text=name, icon=attribute_icon,
+                            insert="%s=\"%s$\" />" % (name, ""))
 
-        self.revalidate([])
+                self.revalidate([])
+
+
+    def append(self, *args, **kwargs):
+        self.entries.append(CompletionEntry(*args, **kwargs))
 
     def revalidate(self, stack):
         self.beginResetModel()
@@ -47,37 +107,51 @@ class CompletionModel(QAbstractListModel):
         tagsInStack = {s.value for s in stack}
 
         try:
-            topValue =stack[-1].value
+            topValue = stack[-1].value
         except:
             topValue = None
 
-
         for e in self.entries:
-            if e.parent.endswith('$') and e.parent[:-1] == topValue:
-                self.active_entries.append(e)
-            elif e.parent in tagsInStack:
-                self.active_entries.append(e)
+            select = True
+            if e.parent is not True and e.parent != topValue:
+                select = select and False
 
+            if e.anchestor is not True and e.anchestor not in tagsInStack:
+                select = select and False
+
+            if select:
+                self.active_entries.append(e)
 
         print "Revalidated: ", map(lambda x: x.text, self.active_entries)
 
         self.endResetModel()
 
-    def data(self, index = QModelIndex(), role=Qt.DisplayRole):
+    def data(self, index=QModelIndex(), role=Qt.DisplayRole):
         if not index.isValid():
             return
 
         row = index.row()
         entry = self.active_entries[row]
+
         if role == Qt.DisplayRole:
             return entry.text
 
-        if role == Qt.UserRole:
+        elif role == Qt.DecorationRole:
+            return entry.icon
+
+        elif role == Qt.BackgroundRole:
+            return entry.background
+
+        elif role == Qt.ForegroundRole:
+            return entry.background
+
+        elif role == Qt.UserRole:
             return entry.insert
 
 
-    def rowCount(self, parent = QModelIndex()):
+    def rowCount(self, parent=QModelIndex()):
         return len(self.active_entries)
+
 
 class LineNumberArea(QWidget):
     def __init__(self, codeeditor):
@@ -125,7 +199,7 @@ class CodeEditor(QPlainTextEdit):
 
         self.sections = {}
 
-        ## completer
+        # # completer
 
         self._completer = None
 
@@ -259,15 +333,23 @@ class CodeEditor(QPlainTextEdit):
 
         self.findSections(text, char2line)
         tokens = tokenize(text)
-        self.findErrorsAndWarnings(tokens)
+        self.findErrorsAndWarnings(text, tokens)
         self.contentChanged.emit(tokens, char2line)
         self.semantic_enabled = True
 
-    def findErrorsAndWarnings(self, toks):
+    def findErrorsAndWarnings(self,text, toks):
         errors = find_errors(toks)
 
         cursor = self.textCursor();
         errorFormat = self.highlighter.theme['ERROR']
+
+        # clear errors
+        cursor.movePosition(0)
+        cursor.movePosition(len(text)+1, QTextCursor.KeepAnchor)
+        format = cursor.charFormat()
+        format.setUnderlineStyle(QTextCharFormat.NoUnderline)
+        cursor.setCharFormat(format)
+        cursor.clearSelection()
 
         for er in errors:
             s, e = er.position
@@ -275,6 +357,7 @@ class CodeEditor(QPlainTextEdit):
             cursor.setPosition(e, QTextCursor.KeepAnchor)
             cursor.mergeCharFormat(errorFormat)
 
+        self.problemsChanged.emit(errors)
         self.document().setModified(False)
 
     def charLine(self, text):
@@ -334,21 +417,33 @@ class CodeEditor(QPlainTextEdit):
 
         if self._completer:
             self._completer.setWidget(self)
-            self._completer.activated.connect(self.insertCompletion)
+            self._completer.activated[QModelIndex].connect(self.insertCompletion)
 
     def completer(self):
         return self._completer
 
-    def insertCompletion(self, text):
+    @pyqtSlot("QModelIndex")
+    def insertCompletion(self, index):
         if self._completer.widget() == self:
-            text = str(text)
+
+            row = index.row()
+            insert_text = self.completion_model.active_entries[row].insert
+
+
             tc = self.textCursor()
-            extra = len(text) - len(self._completer.completionPrefix())
+            #extra = len(text) - len(self._completer.completionPrefix())
 
             tc.movePosition(QTextCursor.Left)
-            tc.movePosition(QTextCursor.EndOfWord)
-            tc.insertText(text[-extra:])
+            tc.movePosition(QTextCursor.EndOfWord, QTextCursor.KeepAnchor)
+            tc.insertText(insert_text)
+
+            tc.clearSelection()
             self.setTextCursor(tc)
+
+            self.find("$", QTextDocument.FindBackward)
+
+    def findInsert(self):
+        self.find("$")
 
     def textUnderCursor(self):
         tc = self.textCursor()
@@ -403,6 +498,7 @@ class CodeEditor(QPlainTextEdit):
         self._completer.complete(cr);
 
 
+    problemsChanged  = pyqtSignal([list])
     firePositionStackUpdate = pyqtSignal([list])
     contentChanged = pyqtSignal([list, list])
 
@@ -431,3 +527,4 @@ class BreadCrump(QWidget):
 
 
 import operator
+

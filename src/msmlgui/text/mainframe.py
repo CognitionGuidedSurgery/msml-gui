@@ -26,6 +26,7 @@ class MainFrame(Ui_MainWindow, QMainWindow):
 
         self.textEditor.firePositionStackUpdate.connect(self.breadcrump.positionStackUpdate)
         self.textEditor.firePositionStackUpdate.connect(self.openHelp)
+        self.textEditor.problemsChanged.connect(self.updateProblems)
 
         self.textEditor.contentChanged.connect(self.updateOverview)
 
@@ -141,6 +142,29 @@ class MainFrame(Ui_MainWindow, QMainWindow):
         appendUnder("Objects", overview.objects)
         appendUnder("Tasks", overview.tasks)
         appendUnder("Environment", overview.environment)
+
+    def updateProblems(self, problems):
+        print "updateProblems", problems
+        self.tableProblems.clear()
+
+        self.tableProblems.setColumnCount(3)
+        self.tableProblems.setRowCount(len(problems))
+
+        for i, p in enumerate(problems):
+            c2 = QTableWidgetItem(p.message)
+            c3 = QTableWidgetItem(str(p.position))
+
+            if p.level == 1:
+                c2.setForeground(QBrush(Qt.darkRed))
+                c3.setForeground(QBrush(Qt.darkRed))
+            else:
+                c2.setForeground(QBrush(Qt.darkBlue))
+                c3.setForeground(QBrush(Qt.darkBlue))
+
+
+            self.tableProblems.setItem(i, 0, c2)
+            self.tableProblems.setItem(i, 1, c3)
+
 
 
 
