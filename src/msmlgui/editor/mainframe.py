@@ -171,5 +171,6 @@ class MainFrame(Ui_MainWindow, QMainWindow):
     def open(self, filename):
         with open(filename) as fp:
             content = fp.read()
-            self.textEditor.insertPlainText(content)
+            self.textEditor.setText(content)
+            #self.textEditor.insertPlainText(content)
 

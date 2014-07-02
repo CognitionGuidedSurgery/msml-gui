@@ -2,7 +2,7 @@ __author__ = 'weigl'
 
 import sys
 from PyQt4.QtGui import QApplication
-from msmlgui.text import *
+from msmlgui.editor import *
 
 print("Application start...")
 app = QApplication(sys.argv)

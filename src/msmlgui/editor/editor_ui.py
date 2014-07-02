@@ -2,7 +2,7 @@
 
 # Form implementation generated from reading ui file 'editor.ui'
 #
-# Created: Sun Jun 22 14:12:20 2014
+# Created: Wed Jul  2 18:17:18 2014
 #      by: PyQt4 UI code generator 4.9.1
 #
 # WARNING! All changes made in this file will be lost!
@@ -184,4 +184,4 @@ class Ui_MainWindow(object):
         self.actionRun.setText(QtGui.QApplication.translate("MainWindow", "Run...", None, QtGui.QApplication.UnicodeUTF8))
 
 from PyQt4 import QtWebKit
-from msmlgui.text.components import CodeEditor, BreadCrump
+from msmlgui.editor.components import CodeEditor, BreadCrump
