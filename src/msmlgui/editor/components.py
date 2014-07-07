@@ -6,7 +6,7 @@ from PyQt4.QtGui import *
 import ply.lex
 
 from .xmllexer import tokenize
-from .highlighter import XMLHighlighter, SOLARIZED_COLORS
+from .highlighter import SOLARIZED_COLORS
 from .flycheck import *
 from .flowlayout import FlowLayout
 
@@ -49,7 +49,7 @@ def create_round_icon(char, color=Qt.white):
 
     painter.end()
 
-    #writer = QImageWriter(char + "_test.bmp", "bmp")
+    # writer = QImageWriter(char + "_test.bmp", "bmp")
     #writer.write(pixmap.toImage())
     return pixmap
 
@@ -167,150 +167,85 @@ class LineNumberArea(QWidget):
         self.codeeditor.lineNumberAreaPaintEvent(event)
 
 
-class CodeEditor(QPlainTextEdit):
+from PyQt4.Qsci import *
+
+
+class CodeEditor(QsciScintilla):
     def __init__(self, parent=None):
-        QTextEdit.__init__(self, parent)
-        self.lineNumberArea = LineNumberArea(self)
+        super(CodeEditor, self).__init__(parent)
 
-        self.blockCountChanged.connect(self.updateLineNumberAreaWidth)
-        self.updateRequest.connect(self.updateLineNumberArea)
-        self.cursorPositionChanged.connect(self.highlightCurrentLine)
-        self.cursorPositionChanged.connect(self.onCursorPositionChanged)
         self.textChanged.connect(self.triggerSemanticAnalyze)
-
-        self.updateLineNumberAreaWidth(0)
-
         self.semantic_enabled = True
 
-        self.highlighter = XMLHighlighter(self.document())
+        # Set the default font
+        font = QFont()
+        font.setFamily('Courier')
+        font.setFixedPitch(True)
+        font.setPointSize(10)
+        self.setFont(font)
+        self.setMarginsFont(font)
 
-        p = self.palette()
-        p.setColor(QPalette.Base, self.highlighter.getBackground())
-        p.setColor(QPalette.Text, self.highlighter.getForeground())
-        self.setPalette(p)
-
-        self.highlightCurrentLine()
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.runSemanticAnalyze)
-        self.timer.setSingleShot(True)
-
-        self.triggerSemanticAnalyze()
-
-        self.sections = {}
-
-        # # completer
-
-        self._completer = None
-
-        completer = QCompleter(self)
-        self.completion_model = CompletionModel()
-
-        self.firePositionStackUpdate.connect(self.completion_model.revalidate)
-
-        completer.setModel(self.completion_model)
-        completer.setModelSorting(QCompleter.CaseSensitivelySortedModel)
-        completer.setCaseSensitivity(Qt.CaseSensitive)
-        completer.setWrapAround(False)
-        self.setCompleter(completer)
+        # Margin 0 is used for line numbers
+        fontmetrics = QFontMetrics(font)
+        self.setMarginsFont(font)
+        self.setMarginWidth(0, fontmetrics.width("000") + 6)
+        self.setMarginLineNumbers(0, True)
+        self.setMarginsBackgroundColor(QColor("#cccccc"))
 
 
-    def lineNumberAreaPaintEvent(self, event):
-        assert isinstance(event, QPaintEvent)
+        # Clickable margin 1 for showing markers
+        self.setMarginSensitivity(1, True)
+        self.connect(self,
+                     SIGNAL('marginClicked(int, int, Qt::KeyboardModifiers)'),
+                     self.on_margin_clicked)
+        self.markerDefine(QsciScintilla.RightArrow,
+                          self.Circle)
+        self.setMarkerBackgroundColor(QColor("#ee1111"),
+                                      QsciScintilla.Circle)
+        # Brace matching: enable for a brace immediately before or after
+        # the current position
+        #
+        self.setBraceMatching(QsciScintilla.SloppyBraceMatch)
 
-        painter = QPainter(self.lineNumberArea)
-        painter.fillRect(event.rect(), Qt.lightGray)
+        # Current line visible with special background color
+        self.setCaretLineVisible(True)
+        self.setCaretLineBackgroundColor(QColor("#ffe4e4"))
 
-        block = self.firstVisibleBlock()
-        blockNumber = block.blockNumber()
+        #lexer = QsciLexerXML()
+        #lexer.setDefaultFont(font)
+        #self.setLexer(lexer)
 
-        top = int(self.blockBoundingGeometry(block).translated(self.contentOffset()).top())
-        bottom = top + int(self.blockBoundingRect(block).height())
 
-        font_height = self.fontMetrics().height()
-        rightpos = self.lineNumberArea.width() - RIGHT_BORDER_MARGIN
+        lexer = QsciLexerXML(self)
+        compl = MSMLScintillaCompleter(lexer)
+        self.setAutoCompletionThreshold(1)
+        self.setAutoCompletionSource(QsciScintilla.AcsAPIs)
+        self.setLexer(lexer)
 
-        while block.isValid() and top <= event.rect().bottom():
-            if block.isVisible() and bottom >= event.rect().top():
-                number = "%d" % (blockNumber + 1)
-                painter.setPen(Qt.black)
 
-                painter.drawText(0, top, rightpos,
-                                 font_height,
-                                 Qt.AlignRight, number)
 
-            block = block.next()
-            top = bottom
-            bottom = top + int(self.blockBoundingRect(block).height());
-            blockNumber += 1
+        self.setAutoCompletionThreshold(1)
+        self.setAutoCompletionSource(QsciScintilla.AcsAPIs)
 
-        painter.save()
-        offset = self.firstVisibleBlock().blockNumber()
-        x = self.lineNumberArea.width() - 5
-        for (a, b), clr in self.sections.items():
-            a -= offset + 1
-            b -= offset
+        self.SendScintilla(QsciScintilla.SCI_STYLESETFONT, 1, 'Courier')
 
-            if a < 0:
-                pxA = 0
-            else:
-                pxA = int(font_height * a)
+        # Don't want to see the horizontal scrollbar at all
+        # Use raw message to Scintilla here (all messages are documented
+        # here: http://www.scintilla.org/ScintillaDoc.html)
+        self.SendScintilla(QsciScintilla.SCI_SETHSCROLLBAR, 0)
 
-            pxB = int(font_height * b)
+        self.setAutoCompletionThreshold(1)
+        self.setAutoCompletionSource(QsciScintilla.AcsAPIs)
 
-            painter.setPen(QPen(QBrush(QColor(clr)), 3))
-            painter.drawLine(x, pxA, x, pxB)
-        painter.restore()
+        # not too small
+        self.setMinimumSize(600, 450)
 
-    def lineNumberAreaWidth(self):
-
-        mx = max(1, self.blockCount())
-        digits = 1
-        while mx >= 10:
-            mx /= 10
-            digits += 1
-
-        space = ADDITIONAL_SPACE + self.fontMetrics().width('9') * digits
-        return space
-
-    def resizeEvent(self, event):
-        assert isinstance(event, QResizeEvent)
-
-        QPlainTextEdit.resizeEvent(self, event)
-
-        cr = self.contentsRect()
-        width = self.lineNumberAreaWidth()
-        rect = QRect(cr.left(), cr.top(), width, cr.height())
-        self.lineNumberArea.setGeometry(rect)
-
-    def updateLineNumberAreaWidth(self, newBlockCount):
-        self.setViewportMargins(self.lineNumberAreaWidth(), 0, 0, 0)
-
-    def highlightCurrentLine(self):
-
-        if not self.isReadOnly():
-            selection = QTextEdit.ExtraSelection()
-
-            lineColor = self.highlighter.getCurrentLineColor()
-
-            selection.format.setBackground(lineColor)
-            selection.format.setProperty(QTextFormat.FullWidthSelection, True)
-            selection.cursor = self.textCursor()
-            selection.cursor.clearSelection()
-
-            self.setExtraSelections([selection])
+    def on_margin_clicked(self, nmargin, nline, modifiers):
+        # Toggle marker for the line the margin was clicked on
+        if self.markersAtLine(nline) != 0:
+            self.markerDelete(nline, self.Circle)
         else:
-            self.setExtraSelections([])
-
-    def updateLineNumberArea(self, rect, dy):
-        if dy > 0:
-            self.lineNumberArea.scroll(0, dy)
-        else:
-            area_width = self.lineNumberArea.width()
-            self.lineNumberArea.update(0, rect.y(), area_width, rect.height())
-
-        if rect.contains(self.viewport().rect()):
-            self.updateLineNumberAreaWidth(0)
+            self.markerAdd(nline, self.Circle)
 
     def onCursorPositionChanged(self):
         text = str(self.toPlainText())
@@ -320,9 +255,10 @@ class CodeEditor(QPlainTextEdit):
     def triggerSemanticAnalyze(self):
         print "Trigger Semantic Analyze"
         if self.semantic_enabled:
-            self.timer.stop()
-            self.timer.start(DELAY_SEMANTIC_ANALYZE)
-            self.document().setModified(False)
+            #self.timer.stop()
+            #self.timer.start(DELAY_SEMANTIC_ANALYZE)
+            #self.document().setModified(False)
+            pass
 
     def runSemanticAnalyze(self):
         print "ANALyze"
@@ -337,7 +273,7 @@ class CodeEditor(QPlainTextEdit):
         self.contentChanged.emit(tokens, char2line)
         self.semantic_enabled = True
 
-    def findErrorsAndWarnings(self,text, toks):
+    def findErrorsAndWarnings(self, text, toks):
         errors = find_errors(toks)
 
         cursor = self.textCursor();
@@ -345,7 +281,7 @@ class CodeEditor(QPlainTextEdit):
 
         # clear errors
         cursor.movePosition(0)
-        cursor.movePosition(len(text)+1, QTextCursor.KeepAnchor)
+        cursor.movePosition(len(text) + 1, QTextCursor.KeepAnchor)
         format = cursor.charFormat()
         format.setUnderlineStyle(QTextCharFormat.NoUnderline)
         cursor.setCharFormat(format)
@@ -406,32 +342,14 @@ class CodeEditor(QPlainTextEdit):
         self.positionStack = stack
         self.firePositionStackUpdate.emit(self.positionStack)
 
-
-    def setCompleter(self, completer):
-        assert isinstance(completer, QCompleter)
-
-        if self._completer:
-            self._completer.disconnect(self, 0)
-
-        self._completer = completer
-
-        if self._completer:
-            self._completer.setWidget(self)
-            self._completer.activated[QModelIndex].connect(self.insertCompletion)
-
-    def completer(self):
-        return self._completer
-
     @pyqtSlot("QModelIndex")
     def insertCompletion(self, index):
         if self._completer.widget() == self:
-
             row = index.row()
             insert_text = self.completion_model.active_entries[row].insert
 
-
             tc = self.textCursor()
-            #extra = len(text) - len(self._completer.completionPrefix())
+            # extra = len(text) - len(self._completer.completionPrefix())
 
             tc.movePosition(QTextCursor.Left)
             tc.movePosition(QTextCursor.EndOfWord, QTextCursor.KeepAnchor)
@@ -450,55 +368,7 @@ class CodeEditor(QPlainTextEdit):
         tc.select(QTextCursor.WordUnderCursor)
         return tc.selectedText()
 
-    def focusInEvent(self, event):
-        assert isinstance(event, QFocusEvent)
-
-        if self._completer:
-            self._completer.setWidget(self)
-
-        QPlainTextEdit.focusInEvent(self, event)
-
-    def keyPressEvent(self, event):
-        assert isinstance(event, QKeyEvent)
-
-        if self._completer and self._completer.popup().isVisible():
-            if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Escape, Qt.Key_Tab, Qt.Key_Backtab):
-                event.ignore()
-                return
-
-        isShortcut = ((event.modifiers() & Qt.ControlModifier) and event.key() == Qt.Key_E)
-
-        if not self._completer or not isShortcut:  # do not process the shortcut when we have a completer
-            QPlainTextEdit.keyPressEvent(self, event)
-            return
-
-        ctrlOrShift = event.modifiers() & (Qt.ControlModifier | Qt.ShiftModifier)
-        if not self._completer or (ctrlOrShift and event.text().isEmpty()):
-            return
-
-        eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="
-        hasModifier = (event.modifiers() != Qt.NoModifier) and not ctrlOrShift
-        completionPrefix = self.textUnderCursor()
-
-        if not isShortcut \
-                and (hasModifier \
-                             or event.text().isEmpty() \
-                             or completionPrefix.length() < 3 \
-                             or eow.contains(event.text().right(1))):
-            self._completer.popup().hide()
-            return
-
-        if completionPrefix != self._completer.completionPrefix():
-            self._completer.setCompletionPrefix(completionPrefix)
-            self._completer.popup().setCurrentIndex(self._completer.completionModel().index(0, 0))
-
-        cr = self.cursorRect()
-        cr.setWidth(self._completer.popup().sizeHintForColumn(0)
-                    + self._completer.popup().verticalScrollBar().sizeHint().width())
-        self._completer.complete(cr);
-
-
-    problemsChanged  = pyqtSignal([list])
+    problemsChanged = pyqtSignal([list])
     firePositionStackUpdate = pyqtSignal([list])
     contentChanged = pyqtSignal([list, list])
 
