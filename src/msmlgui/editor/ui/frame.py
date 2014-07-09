@@ -1,15 +1,11 @@
 __author__ = 'weigl'
 
-
 from path import path
 from PyQt4.QtGui import *
 from PyQt4.QtCore import *
-import msmlgui.rcc
 
-from .flycheck import build_overview
+from ..gen.ui_frame import *
 
-from .editor_ui import Ui_MainWindow
-from ..help import *
 
 icon = lambda x: QIcon(r':/icons/tango/16x16/%s.png' % x)
 
@@ -119,15 +115,16 @@ class MainFrame(Ui_MainWindow, QMainWindow):
 
             self.oldHelp = c
 
-
             if c.startswith("http://"):
                 print "Open Help: %s" % c
                 self.webView.setUrl(QUrl(c))
             else:
                 self.webView.setHtml(c)
-        except IndexError: pass
+        except IndexError:
+            pass
 
     def updateOverview(self, tokens, char2line):
+        return
         overview = build_overview(tokens)
 
         self.treeOverview.clear()
@@ -161,16 +158,12 @@ class MainFrame(Ui_MainWindow, QMainWindow):
                 c2.setForeground(QBrush(Qt.darkBlue))
                 c3.setForeground(QBrush(Qt.darkBlue))
 
-
             self.tableProblems.setItem(i, 0, c2)
             self.tableProblems.setItem(i, 1, c3)
-
-
-
 
     def open(self, filename):
         with open(filename) as fp:
             content = fp.read()
-            self.textEditor.setText(content)
-            #self.textEditor.insertPlainText(content)
+            # self.textEditor.setText(content)
+            self.textEditor.insertPlainText(content)
 
