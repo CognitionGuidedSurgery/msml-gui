@@ -76,7 +76,6 @@ class CompletionModel(QAbstractListModel):
         import msmlgui.shared
 
         self.entries = []
-
         self.active_entries = []
 
         operator_icon = create_round_icon("o", Qt.darkBlue)
@@ -94,7 +93,7 @@ class CompletionModel(QAbstractListModel):
                             text=name, icon=attribute_icon,
                             insert="%s=\"%s$\" />" % (name, ""))
 
-                self.revalidate([])
+        self.revalidate([])
 
 
     def append(self, *args, **kwargs):
